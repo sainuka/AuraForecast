@@ -9,6 +9,7 @@ import { HealthMetricsChart } from "@/components/dashboard/HealthMetricsChart";
 import { UltrahumanConnection } from "@/components/dashboard/UltrahumanConnection";
 import { CycleTrackingCard } from "@/components/dashboard/CycleTrackingCard";
 import { CycleTrackingDialog } from "@/components/cycle/CycleTrackingDialog";
+import { ProteinCalculator } from "@/components/dashboard/ProteinCalculator";
 import { Heart, Moon, Activity, Droplet, Thermometer, LogOut, TrendingUp, Target, Download } from "lucide-react";
 import { Link } from "wouter";
 import { calculateCyclePhase } from "@/lib/cycleUtils";
@@ -265,6 +266,8 @@ export default function Dashboard() {
               </div>
               
               <CycleTrackingCard cycle={cycle} isLoading={cycleLoading} />
+              
+              <ProteinCalculator />
               
               <UltrahumanConnection
                 isConnected={isConnected}
