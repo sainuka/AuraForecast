@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export default function UltrahumanCallback() {
   const [, setLocation] = useLocation();
@@ -36,14 +37,27 @@ export default function UltrahumanCallback() {
       }
 
       try {
+        const supabase = await getSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setStatus("error");
+          setMessage("Please log in first");
+          return;
+        }
+
         const response = await fetch("/api/ultrahuman/callback", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`
+          },
           body: JSON.stringify({ code, userId }),
         });
 
         if (!response.ok) {
-          throw new Error("Failed to connect");
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to connect");
         }
 
         localStorage.removeItem("ultrahuman_state");
@@ -53,9 +67,9 @@ export default function UltrahumanCallback() {
         setTimeout(() => {
           setLocation("/dashboard");
         }, 2000);
-      } catch (err) {
+      } catch (err: any) {
         setStatus("error");
-        setMessage("Failed to exchange authorization code");
+        setMessage(err.message || "Failed to exchange authorization code");
       }
     };
 
