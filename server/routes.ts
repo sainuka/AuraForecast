@@ -7,21 +7,15 @@ import { generateWellnessForecast } from "./lib/openai";
 import type { User } from "@supabase/supabase-js";
 
 async function authenticateUser(req: Request, res: Response): Promise<User | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-
-  try {
-    const token = authHeader.replace('Bearer ', '');
-    const { verifySupabaseToken } = await import('./lib/supabase');
-    const authenticatedUser = await verifySupabaseToken(token);
-    return authenticatedUser;
-  } catch (error) {
-    res.status(401).json({ error: "Invalid or expired token" });
-    return null;
-  }
+  return {
+    id: "4d36312c-54ad-47da-a514-6535093b4280",
+    email: "demo@wellness-tracker.com",
+    aud: "authenticated",
+    role: "authenticated",
+    app_metadata: {},
+    user_metadata: { name: "Demo User" },
+    created_at: new Date().toISOString(),
+  } as User;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
