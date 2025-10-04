@@ -26,7 +26,7 @@ async function authenticateUser(req: Request, res: Response): Promise<User | nul
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // Config route - MUST be before any middleware that might interfere
+  // Config routes - MUST be before any middleware that might interfere
   app.get("/api/config/supabase", (_req, res) => {
     const url = process.env.SUPABASE_URL;
     const anonKey = process.env.SUPABASE_ANON_KEY;
@@ -38,6 +38,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     res.json({ url, anonKey });
+  });
+
+  app.get("/api/config/ultrahuman", (_req, res) => {
+    const clientId = process.env.ULTRAHUMAN_CLIENT_ID;
+    
+    if (!clientId) {
+      return res.status(500).json({ 
+        error: "Ultrahuman configuration not available. Please configure ULTRAHUMAN_CLIENT_ID." 
+      });
+    }
+    
+    res.json({ clientId });
   });
   
   // Auth routes

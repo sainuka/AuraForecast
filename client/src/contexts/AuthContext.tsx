@@ -93,17 +93,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           name: name || "",
         },
+        emailRedirectTo: window.location.origin + "/dashboard",
       },
     });
 
     if (error) {
+      console.error("Supabase signup error:", error);
       throw new Error(error.message);
     }
+
+    console.log("Signup response:", { user: data.user, session: !!data.session });
 
     if (data.user && data.session) {
       const token = data.session.access_token;
       
-      await fetch("/api/users/sync", {
+      const response = await fetch("/api/users/sync", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -115,6 +119,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: name || "",
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("User sync error:", errorData);
+      }
+    } else if (data.user && !data.session) {
+      console.warn("User created but no session - email confirmation may be required");
     }
 
     setUser(data.user);

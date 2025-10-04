@@ -49,16 +49,34 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  const handleConnect = () => {
-    const clientId = import.meta.env.VITE_ULTRAHUMAN_CLIENT_ID || process.env.ULTRAHUMAN_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/ultrahuman/callback`;
-    const scope = "ring_data cgm_data profile";
-    
-    localStorage.setItem("ultrahuman_state", user?.id || "");
-    
-    const authUrl = `https://partner.ultrahuman.com/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${user?.id}`;
-    
-    window.location.href = authUrl;
+  const handleConnect = async () => {
+    try {
+      const response = await fetch('/api/config/ultrahuman');
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Configuration error",
+          description: "Ultrahuman integration not configured. Please contact support.",
+        });
+        return;
+      }
+      
+      const config = await response.json();
+      const redirectUri = `${window.location.origin}/auth/ultrahuman/callback`;
+      const scope = "ring_data cgm_data profile";
+      
+      localStorage.setItem("ultrahuman_state", user?.id || "");
+      
+      const authUrl = `https://partner.ultrahuman.com/oauth/authorize?response_type=code&client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${user?.id}`;
+      
+      window.location.href = authUrl;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: error.message || "Failed to connect to Ultrahuman",
+      });
+    }
   };
 
   const handleSync = async () => {

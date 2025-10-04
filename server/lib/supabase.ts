@@ -13,12 +13,21 @@ export const supabaseAdmin = supabaseServiceKey && supabaseUrl
     })
   : null;
 
+export const supabaseClient = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
+
 export async function verifySupabaseToken(token: string) {
-  if (!supabaseAdmin) {
-    throw new Error('Supabase service role key not configured. Please set SUPABASE_SERVICE_ROLE_KEY.');
+  if (!supabaseClient) {
+    throw new Error('Supabase not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY.');
   }
 
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  const { data: { user }, error } = await supabaseClient.auth.getUser(token);
   
   if (error || !user) {
     throw new Error('Invalid or expired token');
