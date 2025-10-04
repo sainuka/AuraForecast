@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/auth/Login";
 import Signup from "@/pages/auth/Signup";
 import Dashboard from "@/pages/Dashboard";
+import Trends from "@/pages/Trends";
 import UltrahumanCallback from "@/pages/UltrahumanCallback";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/trends" component={Trends} />
       <Route path="/auth/ultrahuman/callback" component={UltrahumanCallback} />
       <Route component={NotFound} />
     </Switch>

@@ -9,7 +9,8 @@ import { HealthMetricsChart } from "@/components/dashboard/HealthMetricsChart";
 import { UltrahumanConnection } from "@/components/dashboard/UltrahumanConnection";
 import { CycleTrackingCard } from "@/components/dashboard/CycleTrackingCard";
 import { CycleTrackingDialog } from "@/components/cycle/CycleTrackingDialog";
-import { Heart, Moon, Activity, Droplet, Thermometer, LogOut } from "lucide-react";
+import { Heart, Moon, Activity, Droplet, Thermometer, LogOut, TrendingUp } from "lucide-react";
+import { Link } from "wouter";
 import { calculateCyclePhase } from "@/lib/cycleUtils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -126,6 +127,12 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Link href="/trends">
+                <Button variant="ghost" size="sm" data-testid="button-trends">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Trends
+                </Button>
+              </Link>
               <ThemeToggle />
               <Button
                 variant="ghost"

@@ -15,9 +15,10 @@ A personalized women's health tracking application that integrates with Ultrahum
 1. **User Authentication**: Supabase Auth with email/password (migrated from bcrypt)
 2. **Ultrahuman OAuth Integration**: Connect to Ultrahuman devices for health data
 3. **Health Metrics Tracking**: Sleep, HRV, recovery, glucose, temperature, steps
-4. **AI Wellness Forecasts**: Personalized predictions via Supabase Edge Functions
-5. **Data Visualization**: Interactive charts showing health metric trends
-6. **Dark/Light Mode**: Theme toggle with persistent user preference
+4. **Menstrual Cycle Tracking**: Track period dates, flow intensity, and symptoms correlated with biometrics
+5. **AI Wellness Forecasts**: Personalized predictions via Supabase Edge Functions with cycle-aware insights
+6. **Data Visualization**: Interactive charts showing health metric trends
+7. **Dark/Light Mode**: Theme toggle with persistent user preference
 
 ## Environment Variables
 Required secrets in Replit Secrets:
@@ -34,6 +35,7 @@ Required secrets in Replit Secrets:
 - **users**: User accounts (UUID primary keys for Supabase Auth compatibility)
 - **ultrahuman_tokens**: OAuth tokens for Ultrahuman API access
 - **health_metrics**: Daily health metrics from Ultrahuman devices
+- **cycle_tracking**: Menstrual cycle data (period dates, flow, symptoms, notes)
 - **wellness_forecasts**: AI-generated wellness predictions and recommendations
 
 ## API Routes
@@ -51,7 +53,13 @@ Required secrets in Replit Secrets:
 ### Health Data
 - `GET /api/metrics/:userId`: Get user's health metrics
 - `GET /api/forecast/:userId`: Get latest wellness forecast
-- `POST /api/forecast/generate`: Generate AI forecast (uses Edge Function if enabled)
+- `POST /api/forecast/generate`: Generate AI forecast (uses Edge Function if enabled, includes cycle phase)
+
+### Cycle Tracking
+- `GET /api/cycles/:userId`: Get user's cycle tracking history
+- `GET /api/cycles/:userId/latest`: Get latest cycle entry
+- `POST /api/cycles`: Create new cycle entry
+- `PATCH /api/cycles/:id`: Update existing cycle entry
 
 ## User Flow
 1. Sign up or log in to the application
@@ -70,6 +78,13 @@ The workflow "Start application" runs `npm run dev` which starts both Express ba
 - **Components**: Shadcn UI with custom health-focused design
 
 ## Recent Changes (Oct 2025)
+
+### Cycle Tracking Feature (Latest)
+- **Database**: Added `cycle_tracking` table for menstrual cycle data
+- **UI Components**: CycleTrackingDialog (input form) and CycleTrackingCard (dashboard display)
+- **Cycle Phase Calculation**: Determines follicular/ovulation/luteal/menstrual phases
+- **AI Integration**: Cycle phase passed to forecast generation for phase-aware wellness recommendations
+- **Features**: Track period dates, flow intensity, symptoms, and notes with visual phase indicators
 
 ### Supabase Migration
 - **Database**: Migrated schema to use UUID primary keys for Supabase Auth compatibility
