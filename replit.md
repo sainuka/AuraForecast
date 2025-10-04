@@ -24,14 +24,17 @@ A personalized women's health tracking application that integrates with Ultrahum
 
 ## Environment Variables
 Required secrets in Replit Secrets:
-- `DATABASE_URL`: Neon PostgreSQL connection string (will migrate to Supabase)
+- `DATABASE_URL`: Supabase PostgreSQL connection string (pooler at port 6543)
 - `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_ANON_KEY`: Supabase anonymous key for client auth
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key for server-side token validation (required)
+- `SUPABASE_ANON_KEY`: Supabase anonymous key for client auth and token verification
+- `SUPABASE_SERVICE_ROLE_KEY`: (Optional) Supabase service role key for admin operations
 - `OPENAI_API_KEY`: OpenAI API key (used in edge functions)
 - `ULTRAHUMAN_CLIENT_ID`: Ultrahuman Partner API client ID
 - `ULTRAHUMAN_CLIENT_SECRET`: Ultrahuman Partner API client secret
+- `SESSION_SECRET`: Session secret for Express sessions
 - `USE_EDGE_FUNCTIONS`: Set to 'true' to use Supabase Edge Functions for AI (optional)
+
+**Note**: The application now uses the Supabase anon key for authentication token verification, eliminating the strict requirement for the service role key.
 
 ## Database Schema
 - **users**: User accounts (UUID primary keys for Supabase Auth compatibility)
@@ -86,6 +89,45 @@ The workflow "Start application" runs `npm run dev` which starts both Express ba
 - **Fonts**: Inter (body), DM Sans (headings)
 - **Spacing**: Consistent 4px grid system
 - **Components**: Shadcn UI with custom health-focused design
+
+## Supabase Configuration for Testing
+
+### Email Validation Settings
+Supabase has specific email validation requirements that may affect testing:
+
+1. **Email Confirmation Requirement**: By default, Supabase may require email confirmation for new signups
+   - To disable for development: Go to Supabase Dashboard → Authentication → Providers → Email → Toggle off "Confirm email"
+   - This allows immediate login after signup without email verification
+
+2. **Allowed Email Domains**: Supabase may restrict which email domains can sign up
+   - Check project settings for any domain allowlists
+   - For testing, use real email domains like gmail.com, yahoo.com, etc.
+
+3. **Team Member Emails**: Without custom SMTP, only team member emails can receive auth emails by default
+   - Add test email addresses to your Supabase project team, OR
+   - Set up custom SMTP (Resend, SendGrid, etc.), OR
+   - Disable email confirmation (recommended for development)
+
+### Security Implementation (October 2025)
+
+**Authentication & Authorization**
+- All user-specific API routes protected with `authenticateUser()` helper
+- Bearer token verification using Supabase Auth with anon key (no service role key required)
+- Consistent 401 responses for missing/invalid tokens
+- User ID matching enforced on all operations (403 for mismatches)
+
+**PATCH Payload Validation**
+- Created `updateCycleTrackingSchema` - whitelists safe cycle fields (excludes userId, id, createdAt, updatedAt)
+- Created `updateHealthGoalSchema` - whitelists safe goal fields (excludes userId, id, baselineValue, createdAt, updatedAt)
+- Prevents privilege escalation and immutable field manipulation via Zod schema validation
+- Returns 400 with validation details for invalid payloads
+
+**Edge Function Token Verification**
+- POST /api/forecast/generate verifies accessToken matches Bearer token
+- Prevents token replay attacks
+- Returns 403 for token mismatches
+
+**Routes Protected**: All 18 user-specific endpoints including cycles, goals, metrics, forecasts, and exports
 
 ## Recent Changes (Oct 2025)
 
