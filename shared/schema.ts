@@ -77,6 +77,16 @@ export const healthGoals = pgTable("health_goals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const foodLogs = pgTable("food_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  foodText: text("food_text").notNull(),
+  totalProtein: decimal("total_protein", { precision: 10, scale: 2 }).notNull(),
+  totalCalories: decimal("total_calories", { precision: 10, scale: 2 }).notNull(),
+  nutritionData: jsonb("nutrition_data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -130,6 +140,11 @@ export const updateHealthGoalSchema = createInsertSchema(healthGoals).partial().
   updatedAt: true,
 });
 
+export const insertFoodLogSchema = createInsertSchema(foodLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UltrahumanToken = typeof ultrahumanTokens.$inferSelect;
@@ -144,3 +159,5 @@ export type HealthGoal = typeof healthGoals.$inferSelect;
 export type InsertHealthGoal = z.infer<typeof insertHealthGoalSchema>;
 export type UpdateCycleTracking = z.infer<typeof updateCycleTrackingSchema>;
 export type UpdateHealthGoal = z.infer<typeof updateHealthGoalSchema>;
+export type FoodLog = typeof foodLogs.$inferSelect;
+export type InsertFoodLog = z.infer<typeof insertFoodLogSchema>;
