@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, syncUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema, updateCycleTrackingSchema, updateHealthGoalSchema } from "@shared/schema";
+import { insertUserSchema, syncUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema, updateCycleTrackingSchema, updateHealthGoalSchema, insertFoodLogSchema } from "@shared/schema";
 import { exchangeCodeForTokens, refreshAccessToken, fetchHealthMetrics, fetchDailyMetricsWithDirectToken } from "./lib/ultrahuman";
 import { generateWellnessForecast } from "./lib/openai";
 import type { User } from "@supabase/supabase-js";
@@ -935,6 +935,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Nutrition analysis error:", error);
       res.status(500).json({ error: error.message || "Failed to analyze nutrition" });
+    }
+  });
+
+  // Food logs routes
+  app.post("/api/food-logs", async (req, res) => {
+    try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
+      const validatedData = insertFoodLogSchema.parse({
+        ...req.body,
+        userId: authenticatedUser.id,
+      });
+
+      const foodLog = await storage.createFoodLog(validatedData);
+      console.log("[FoodLogs] Created food log:", foodLog.id);
+
+      res.json(foodLog);
+    } catch (error: any) {
+      console.error("Create food log error:", error);
+      res.status(400).json({ error: error.message || "Failed to create food log" });
+    }
+  });
+
+  app.get("/api/food-logs/:userId", async (req, res) => {
+    try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
+      const { userId } = req.params;
+      
+      if (authenticatedUser.id !== userId) {
+        return res.status(403).json({ error: "Forbidden: Cannot access other user's food logs" });
+      }
+
+      const foodLogs = await storage.getFoodLogsByUserId(userId);
+      res.json(foodLogs);
+    } catch (error: any) {
+      console.error("Get food logs error:", error);
+      res.status(400).json({ error: error.message || "Failed to get food logs" });
     }
   });
 

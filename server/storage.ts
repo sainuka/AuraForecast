@@ -11,9 +11,11 @@ import {
   type InsertCycleTracking,
   type HealthGoal,
   type InsertHealthGoal,
+  type FoodLog,
+  type InsertFoodLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { users, ultrahumanTokens, healthMetrics, wellnessForecasts, cycleTracking, healthGoals } from "@shared/schema";
+import { users, ultrahumanTokens, healthMetrics, wellnessForecasts, cycleTracking, healthGoals, foodLogs } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 
 export interface IStorage {
@@ -51,6 +53,10 @@ export interface IStorage {
   createGoal(goal: InsertHealthGoal): Promise<HealthGoal>;
   updateGoal(id: string, goal: Partial<InsertHealthGoal>): Promise<HealthGoal | undefined>;
   deleteGoal(id: string): Promise<void>;
+  
+  // Food Logs
+  getFoodLogsByUserId(userId: string, limit?: number): Promise<FoodLog[]>;
+  createFoodLog(foodLog: InsertFoodLog): Promise<FoodLog>;
 }
 
 export class DbStorage implements IStorage {
@@ -268,6 +274,21 @@ export class DbStorage implements IStorage {
 
   async deleteGoal(id: string): Promise<void> {
     await db.delete(healthGoals).where(eq(healthGoals.id, id));
+  }
+
+  // Food Logs
+  async getFoodLogsByUserId(userId: string, limit: number = 50): Promise<FoodLog[]> {
+    return await db
+      .select()
+      .from(foodLogs)
+      .where(eq(foodLogs.userId, userId))
+      .orderBy(desc(foodLogs.createdAt))
+      .limit(limit);
+  }
+
+  async createFoodLog(insertFoodLog: InsertFoodLog): Promise<FoodLog> {
+    const result = await db.insert(foodLogs).values(insertFoodLog).returning();
+    return result[0];
   }
 }
 
