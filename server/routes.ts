@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema, updateCycleTrackingSchema, updateHealthGoalSchema } from "@shared/schema";
-import { exchangeCodeForTokens, refreshAccessToken, fetchHealthMetrics } from "./lib/ultrahuman";
+import { exchangeCodeForTokens, refreshAccessToken, fetchHealthMetrics, fetchDailyMetricsWithDirectToken } from "./lib/ultrahuman";
 import { generateWellnessForecast } from "./lib/openai";
 import type { User } from "@supabase/supabase-js";
 
@@ -206,6 +206,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Sync error:", error);
       res.status(400).json({ error: error.message || "Sync failed" });
+    }
+  });
+
+  // Direct token sync - uses ULTRAHUMAN_ACCESS_TOKEN env var
+  app.post("/api/ultrahuman/sync-direct", async (req, res) => {
+    try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
+      const { userId, email } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot sync data for other users" });
+      }
+
+      // Fetch health metrics for the last 7 days using direct token
+      const promises = [];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        promises.push(
+          fetchDailyMetricsWithDirectToken(dateStr, email).catch((err) => {
+            console.error(`Failed to fetch metrics for ${dateStr}:`, err);
+            return null;
+          })
+        );
+      }
+
+      const metricsResults = await Promise.all(promises);
+      const validMetrics = metricsResults.filter((m) => m !== null);
+
+      // Store metrics in database
+      for (const metricData of validMetrics) {
+        if (metricData) {
+          // Parse the date from the metrics or use today's date
+          const metricDate = new Date();
+          
+          await storage.createMetric({
+            userId,
+            date: metricDate,
+            sleepScore: metricData.sleep_score || metricData.sleep?.sleep_score,
+            sleepDuration: metricData.total_sleep || metricData.sleep?.total_sleep,
+            hrv: metricData.hrv || metricData.avg_sleep_hrv,
+            restingHeartRate: metricData.night_rhr || metricData.sleep_rhr,
+            recoveryScore: metricData.recovery?.recovery_index,
+            steps: metricData.steps,
+            avgGlucose: metricData.average_glucose,
+            glucoseVariability: metricData.glucose_variability,
+            temperature: metricData.average_body_temperature,
+            vo2Max: metricData.vo2_max,
+            rawData: metricData,
+          });
+        }
+      }
+
+      res.json({ success: true, metricsCount: validMetrics.length });
+    } catch (error: any) {
+      console.error("Direct sync error:", error);
+      res.status(400).json({ error: error.message || "Direct sync failed" });
     }
   });
 
