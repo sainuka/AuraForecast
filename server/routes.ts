@@ -267,6 +267,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log(`[Sync] Processing ${dateMetrics.length} metric types for ${dateStr}`);
         
+        // Log all metric types to understand data structure
+        const metricTypes = dateMetrics.map(m => m.type).filter(Boolean);
+        console.log(`[Sync] Available metric types for ${dateStr}:`, metricTypes);
+        
         // Aggregate all metrics for this date
         const aggregated: any = {};
         

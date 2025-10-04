@@ -133,11 +133,14 @@ export async function fetchDailyMetricsWithDirectToken(
       dataLength: Array.isArray(response.data) ? response.data.length : (response.data?.data ? (Array.isArray(response.data.data) ? response.data.data.length : 'not an array') : 'no data field')
     });
 
-    // Log actual data content for debugging
-    if (response.data?.data) {
-      console.log(`[Ultrahuman] Actual data content:`, JSON.stringify(response.data.data, null, 2).substring(0, 500));
-    } else {
-      console.log(`[Ultrahuman] No data.data field. Full response:`, JSON.stringify(response.data, null, 2).substring(0, 500));
+    // Log actual data content for debugging - show full structure for one date
+    if (response.data?.data?.metrics) {
+      const dates = Object.keys(response.data.data.metrics);
+      if (dates.length > 0) {
+        const firstDate = dates[0];
+        const metricsForDate = response.data.data.metrics[firstDate];
+        console.log(`[Ultrahuman] Full metrics structure for ${firstDate}:`, JSON.stringify(metricsForDate, null, 2));
+      }
     }
 
     return response.data;
