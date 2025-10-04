@@ -5,7 +5,13 @@ let configPromise: Promise<{ url: string; anonKey: string }> | null = null;
 
 async function getConfig() {
   if (!configPromise) {
-    configPromise = fetch('/api/config/supabase').then(r => r.json());
+    configPromise = fetch('/api/config/supabase').then(async (r) => {
+      if (!r.ok) {
+        const error = await r.json().catch(() => ({ error: 'Failed to load configuration' }));
+        throw new Error(error.error || 'Supabase configuration unavailable');
+      }
+      return r.json();
+    });
   }
   return configPromise;
 }

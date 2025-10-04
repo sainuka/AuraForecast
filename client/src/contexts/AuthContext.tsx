@@ -20,11 +20,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let subscription: any;
+    let mounted = true;
     
     initSupabase().then(client => {
+      if (!mounted) return;
+      
       setSupabase(client);
       
       client.auth.getSession().then(({ data: { session } }) => {
+        if (!mounted) return;
         setUser(session?.user ?? null);
         setIsLoading(false);
       });
@@ -32,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const {
         data: { subscription: sub },
       } = client.auth.onAuthStateChange((_event, session) => {
+        if (!mounted) return;
         setUser(session?.user ?? null);
       });
       
@@ -39,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      mounted = false;
       if (subscription) {
         subscription.unsubscribe();
       }
@@ -55,6 +61,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (data.user && data.session) {
+      const token = data.session.access_token;
+      
+      await fetch("/api/users/sync", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.user_metadata?.name || "",
+        }),
+      });
     }
 
     setUser(data.user);
@@ -77,10 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(error.message);
     }
 
-    if (data.user) {
+    if (data.user && data.session) {
+      const token = data.session.access_token;
+      
       await fetch("/api/users/sync", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           id: data.user.id,
           email: data.user.email,
