@@ -40,6 +40,7 @@ export interface IStorage {
   getCyclesByUserId(userId: string, limit?: number): Promise<CycleTracking[]>;
   getCyclesByDateRange(userId: string, startDate: Date, endDate: Date): Promise<CycleTracking[]>;
   getLatestCycle(userId: string): Promise<CycleTracking | undefined>;
+  getCycleById(id: string): Promise<CycleTracking | undefined>;
   createCycle(cycle: InsertCycleTracking): Promise<CycleTracking>;
   updateCycle(id: string, cycle: Partial<InsertCycleTracking>): Promise<CycleTracking | undefined>;
   
@@ -149,6 +150,15 @@ export class DbStorage implements IStorage {
       .from(cycleTracking)
       .where(eq(cycleTracking.userId, userId))
       .orderBy(desc(cycleTracking.periodStartDate))
+      .limit(1);
+    return result[0];
+  }
+
+  async getCycleById(id: string): Promise<CycleTracking | undefined> {
+    const result = await db
+      .select()
+      .from(cycleTracking)
+      .where(eq(cycleTracking.id, id))
       .limit(1);
     return result[0];
   }

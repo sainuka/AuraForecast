@@ -110,6 +110,21 @@ export const insertHealthGoalSchema = createInsertSchema(healthGoals).omit({
   updatedAt: true,
 });
 
+export const updateCycleTrackingSchema = createInsertSchema(cycleTracking).partial().omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateHealthGoalSchema = createInsertSchema(healthGoals).partial().omit({
+  id: true,
+  userId: true,
+  baselineValue: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UltrahumanToken = typeof ultrahumanTokens.$inferSelect;
@@ -122,3 +137,5 @@ export type CycleTracking = typeof cycleTracking.$inferSelect;
 export type InsertCycleTracking = z.infer<typeof insertCycleTrackingSchema>;
 export type HealthGoal = typeof healthGoals.$inferSelect;
 export type InsertHealthGoal = z.infer<typeof insertHealthGoalSchema>;
+export type UpdateCycleTracking = z.infer<typeof updateCycleTrackingSchema>;
+export type UpdateHealthGoal = z.infer<typeof updateHealthGoalSchema>;

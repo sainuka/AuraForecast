@@ -1,9 +1,28 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema } from "@shared/schema";
+import { insertUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema, updateCycleTrackingSchema, updateHealthGoalSchema } from "@shared/schema";
 import { exchangeCodeForTokens, refreshAccessToken, fetchHealthMetrics } from "./lib/ultrahuman";
 import { generateWellnessForecast } from "./lib/openai";
+import type { User } from "@supabase/supabase-js";
+
+async function authenticateUser(req: Request, res: Response): Promise<User | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const { verifySupabaseToken } = await import('./lib/supabase');
+    const authenticatedUser = await verifySupabaseToken(token);
+    return authenticatedUser;
+  } catch (error) {
+    res.status(401).json({ error: "Invalid or expired token" });
+    return null;
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -24,15 +43,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post("/api/users/sync", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      
-      const { verifySupabaseToken } = await import('./lib/supabase');
-      const authenticatedUser = await verifySupabaseToken(token);
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
 
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
@@ -71,10 +83,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Ultrahuman OAuth routes
   app.post("/api/ultrahuman/callback", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { code, userId } = req.body;
       
       if (!code || !userId) {
         return res.status(400).json({ error: "Missing code or userId" });
+      }
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot create token for other users" });
       }
 
       const redirectUri = `${req.protocol}://${req.get("host")}/auth/ultrahuman/callback`;
@@ -99,10 +118,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/ultrahuman/sync", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.body;
       
       if (!userId) {
         return res.status(400).json({ error: "Missing userId" });
+      }
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot sync data for other users" });
       }
 
       let token = await storage.getTokenByUserId(userId);
@@ -174,7 +200,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health metrics routes
   app.get("/api/metrics/:userId", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot access metrics for other users" });
+      }
+
       const metrics = await storage.getMetricsByUserId(userId, 30);
       res.json(metrics);
     } catch (error: any) {
@@ -186,7 +220,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Wellness forecast routes
   app.get("/api/forecast/:userId", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot access forecast for other users" });
+      }
+
       const forecast = await storage.getLatestForecast(userId);
       res.json(forecast || null);
     } catch (error: any) {
@@ -197,10 +239,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/forecast/generate", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId, accessToken, cyclePhase } = req.body;
       
       if (!userId) {
         return res.status(400).json({ error: "Missing userId" });
+      }
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot generate forecast for other users" });
       }
 
       const metrics = await storage.getMetricsByUserId(userId, 7);
@@ -214,7 +263,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let insights: any = null;
 
       // If Supabase Edge Functions are deployed and accessToken is provided, use edge function
+      // The accessToken should be the same as the Bearer token used for authentication
       if (accessToken && process.env.SUPABASE_URL && process.env.USE_EDGE_FUNCTIONS === 'true') {
+        const authHeader = req.headers.authorization;
+        const bearerToken = authHeader?.replace('Bearer ', '');
+        
+        if (accessToken !== bearerToken) {
+          return res.status(403).json({ error: "Forbidden: Access token mismatch" });
+        }
         const { callGenerateForecastEdgeFunction } = await import('./lib/supabase-edge');
         
         const edgeRequest = {
@@ -273,7 +329,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cycle tracking routes
   app.get("/api/cycles/:userId", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot access cycles for other users" });
+      }
+
       const cycles = await storage.getCyclesByUserId(userId);
       res.json(cycles);
     } catch (error: any) {
@@ -284,7 +348,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/cycles/:userId/latest", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot access cycles for other users" });
+      }
+
       const cycle = await storage.getLatestCycle(userId);
       res.json(cycle || null);
     } catch (error: any) {
@@ -295,12 +367,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/cycles", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const result = insertCycleTrackingSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ 
           error: "Invalid cycle data", 
           details: result.error.issues 
         });
+      }
+
+      if (result.data.userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot create cycles for other users" });
       }
 
       const cycle = await storage.createCycle(result.data);
@@ -313,13 +392,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/cycles/:id", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { id } = req.params;
       
-      const cycle = await storage.updateCycle(id, req.body);
-      if (!cycle) {
+      const existingCycle = await storage.getCycleById(id);
+      if (!existingCycle) {
         return res.status(404).json({ error: "Cycle not found" });
       }
 
+      if (existingCycle.userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot update cycles for other users" });
+      }
+
+      const result = updateCycleTrackingSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid cycle update data", 
+          details: result.error.issues 
+        });
+      }
+
+      const cycle = await storage.updateCycle(id, result.data);
       res.json(cycle);
     } catch (error: any) {
       console.error("Update cycle error:", error);
@@ -330,7 +425,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health Goals routes
   app.get("/api/goals/:userId", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
+
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot access goals for other users" });
+      }
+
       const { status } = req.query;
       const goals = await storage.getGoalsByUserId(userId, status as string);
       res.json(goals);
@@ -342,11 +445,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/goals/detail/:id", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { id } = req.params;
       const goal = await storage.getGoalById(id);
       if (!goal) {
         return res.status(404).json({ error: "Goal not found" });
       }
+
+      if (goal.userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot access goals for other users" });
+      }
+
       res.json(goal);
     } catch (error: any) {
       console.error("Get goal error:", error);
@@ -356,12 +467,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/goals", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const result = insertHealthGoalSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ 
           error: "Invalid goal data", 
           details: result.error.issues 
         });
+      }
+
+      if (result.data.userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot create goals for other users" });
       }
 
       const goal = await storage.createGoal(result.data);
@@ -374,13 +492,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/goals/:id", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { id } = req.params;
       
-      const goal = await storage.updateGoal(id, req.body);
-      if (!goal) {
+      const existingGoal = await storage.getGoalById(id);
+      if (!existingGoal) {
         return res.status(404).json({ error: "Goal not found" });
       }
 
+      if (existingGoal.userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot update goals for other users" });
+      }
+
+      const result = updateHealthGoalSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid goal update data", 
+          details: result.error.issues 
+        });
+      }
+
+      const goal = await storage.updateGoal(id, result.data);
       res.json(goal);
     } catch (error: any) {
       console.error("Update goal error:", error);
@@ -390,7 +524,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/goals/:id", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { id } = req.params;
+      
+      const existingGoal = await storage.getGoalById(id);
+      if (!existingGoal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+
+      if (existingGoal.userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: Cannot delete goals for other users" });
+      }
+
       await storage.deleteGoal(id);
       res.json({ success: true });
     } catch (error: any) {
@@ -402,17 +549,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Data Export routes
   app.get("/api/export/metrics/:userId", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
       const { startDate, endDate } = req.query;
-
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      const { verifySupabaseToken } = await import('./lib/supabase');
-      const authenticatedUser = await verifySupabaseToken(token);
 
       if (authenticatedUser.id !== userId) {
         return res.status(403).json({ error: "Forbidden: Cannot export data for other users" });
@@ -468,16 +609,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/export/goals/:userId", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
-
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      const { verifySupabaseToken } = await import('./lib/supabase');
-      const authenticatedUser = await verifySupabaseToken(token);
 
       if (authenticatedUser.id !== userId) {
         return res.status(403).json({ error: "Forbidden: Cannot export data for other users" });
@@ -522,17 +657,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/export/cycles/:userId", async (req, res) => {
     try {
+      const authenticatedUser = await authenticateUser(req, res);
+      if (!authenticatedUser) return;
+
       const { userId } = req.params;
       const { startDate, endDate } = req.query;
-
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      const { verifySupabaseToken } = await import('./lib/supabase');
-      const authenticatedUser = await verifySupabaseToken(token);
 
       if (authenticatedUser.id !== userId) {
         return res.status(403).json({ error: "Forbidden: Cannot export data for other users" });
