@@ -82,14 +82,14 @@ export function WellnessForecastCard({ forecast, isLoading }: WellnessForecastCa
           {forecast.forecast}
         </p>
         
-        {forecast.recommendations && Array.isArray(forecast.recommendations) && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Recommendations</h4>
-            <ul className="space-y-1">
-              {forecast.recommendations.slice(0, 3).map((rec: string, idx: number) => (
+        {forecast.recommendations && Array.isArray(forecast.recommendations) && forecast.recommendations.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <h4 className="text-sm font-semibold">Personalized Recommendations</h4>
+            <ul className="space-y-2">
+              {forecast.recommendations.map((rec: string, idx: number) => (
                 <li key={idx} className="flex items-start gap-2 text-sm">
                   <TrendingUp className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>{rec}</span>
+                  <span className="leading-relaxed">{rec}</span>
                 </li>
               ))}
             </ul>

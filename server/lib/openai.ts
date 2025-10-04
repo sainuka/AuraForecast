@@ -47,15 +47,28 @@ export async function generateWellnessForecast(
     })
     .join('\n');
 
-  const prompt = `You are a women's health AI advisor. Based on the following health metrics from the past week, provide a personalized wellness forecast and recommendations.
+  const prompt = `You are a women's health AI advisor specializing in biometric analysis and personalized wellness guidance. Based on the following health metrics from the past week, provide a comprehensive wellness forecast with specific, actionable recommendations.
 
 Health Metrics:
 ${metricsText}
 
+Analysis Guidelines:
+1. Identify trends and patterns in sleep quality, recovery, glucose, and activity levels
+2. Consider how these metrics interrelate and affect overall wellness
+3. Provide specific, measurable recommendations (not generic advice like "sleep more")
+4. Include timing suggestions when relevant (e.g., "Go to bed by 10 PM" instead of "improve sleep schedule")
+
 Please provide:
-1. A brief forecast about the user's wellness trajectory (2-3 sentences)
-2. Key insights about patterns in the data
-3. 3-5 actionable recommendations for improving health
+1. A brief forecast about the user's wellness trajectory (2-3 sentences). Be specific about trends you observe.
+2. Key insights organized by category:
+   - Sleep: Patterns, quality, duration trends
+   - Recovery: HRV trends, stress indicators, recovery adequacy
+   - Metabolism: Glucose stability, energy patterns, activity correlation
+3. 5 actionable recommendations with specific actions the user can take. Each recommendation should:
+   - Start with a specific action verb
+   - Include measurable targets or timeframes when possible
+   - Be personalized to the observed data patterns
+   - Examples: "Aim for 7.5 hours of sleep by going to bed before 10:30 PM", "Take a 15-minute walk after lunch to stabilize afternoon glucose", "Schedule recovery days after 3 consecutive high-intensity workouts"
 
 Respond in JSON format with this structure:
 {
@@ -65,7 +78,7 @@ Respond in JSON format with this structure:
     "recovery": "string", 
     "metabolism": "string"
   },
-  "recommendations": ["string", "string", "string"]
+  "recommendations": ["string", "string", "string", "string", "string"]
 }`;
 
   try {
