@@ -297,6 +297,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Extract values based on metric type
           switch (type) {
+            case 'sleep':
+              // Sleep is a complex nested object
+              if (metricObj.sleep_score?.score !== undefined) {
+                aggregated.sleepScore = metricObj.sleep_score.score;
+              }
+              if (metricObj.total_sleep?.minutes !== undefined) {
+                aggregated.sleepDuration = metricObj.total_sleep.minutes;
+              }
+              if (metricObj.average_body_temperature?.celsius !== undefined) {
+                aggregated.temperature = metricObj.average_body_temperature.celsius;
+              }
+              break;
+            
             case 'night_rhr':
             case 'sleep_rhr':
             case 'resting_hr':
@@ -310,15 +323,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             case 'steps':
               aggregated.steps = extractValue(metricObj);
-              break;
-            
-            case 'sleep_score':
-              aggregated.sleepScore = extractValue(metricObj);
-              break;
-            
-            case 'total_sleep':
-            case 'sleep_duration':
-              aggregated.sleepDuration = extractValue(metricObj);
               break;
             
             case 'recovery':
@@ -335,13 +339,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             case 'glucose_variability':
               aggregated.glucoseVariability = extractValue(metricObj);
-              break;
-            
-            case 'temp':
-            case 'temperature':
-            case 'average_body_temperature':
-            case 'body_temperature':
-              aggregated.temperature = extractValue(metricObj);
               break;
             
             case 'vo2_max':
