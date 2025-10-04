@@ -869,55 +869,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Food text is required" });
       }
 
-      const apiKey = process.env.API_NINJAS_KEY;
+      const apiKey = process.env.USDA_API_KEY;
       if (!apiKey) {
-        console.error("[Nutrition] API key not configured");
-        return res.status(500).json({ error: "API Ninjas key not configured" });
+        console.error("[Nutrition] USDA API key not configured");
+        return res.status(500).json({ error: "USDA API key not configured" });
       }
 
+      // Search USDA FoodData Central API
       const response = await fetch(
-        `https://api.api-ninjas.com/v1/nutrition?query=${encodeURIComponent(foodText)}`,
+        `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodeURIComponent(foodText)}`,
         {
+          method: 'GET',
           headers: {
-            'X-Api-Key': apiKey
+            'Content-Type': 'application/json'
           }
         }
       );
 
-      console.log("[Nutrition] API response status:", response.status);
+      console.log("[Nutrition] USDA API response status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[Nutrition] API error:", response.status, errorText);
-        throw new Error(`API Ninjas returned ${response.status}: ${errorText}`);
+        console.error("[Nutrition] USDA API error:", response.status, errorText);
+        throw new Error(`USDA API returned ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
-      console.log("[Nutrition] API response data:", JSON.stringify(data, null, 2));
+      console.log("[Nutrition] USDA API found", data.foods?.length || 0, "foods");
       
-      // Check if premium subscription is required
-      if (data.length > 0 && typeof data[0].protein_g === 'string' && data[0].protein_g.includes('premium')) {
-        throw new Error("API Ninjas premium subscription required for full nutrition data. Please upgrade your account at https://api-ninjas.com/pricing");
+      if (!data.foods || data.foods.length === 0) {
+        return res.json({
+          foodText,
+          totalProtein: 0,
+          totalCalories: 0,
+          items: [],
+        });
       }
-      
-      // Calculate totals - ensure values are numbers
-      const totalProtein = data.reduce((sum: number, item: any) => {
-        const protein = typeof item.protein_g === 'number' ? item.protein_g : 0;
-        return sum + protein;
-      }, 0);
-      
-      const totalCalories = data.reduce((sum: number, item: any) => {
-        const calories = typeof item.calories === 'number' ? item.calories : 0;
-        return sum + calories;
-      }, 0);
 
-      console.log("[Nutrition] Calculated totals - Protein:", totalProtein, "Calories:", totalCalories);
+      // Take top result and extract nutrition data
+      const food = data.foods[0];
+      const nutrients = food.foodNutrients || [];
+      
+      // Find protein (nutrient ID 1003) and calories (nutrient ID 1008)
+      const proteinNutrient = nutrients.find((n: any) => n.nutrientId === 1003 || n.nutrientName === 'Protein');
+      const calorieNutrient = nutrients.find((n: any) => n.nutrientId === 1008 || n.nutrientName === 'Energy');
+      
+      const protein = proteinNutrient?.value || 0;
+      const calories = calorieNutrient?.value || 0;
+
+      console.log("[Nutrition] Found - Protein:", protein, "Calories:", calories);
+
+      const result = {
+        name: food.description || foodText,
+        calories: calories,
+        protein_g: protein,
+        fat_total_g: nutrients.find((n: any) => n.nutrientId === 1004)?.value || 0,
+        carbohydrates_total_g: nutrients.find((n: any) => n.nutrientId === 1005)?.value || 0,
+      };
 
       res.json({
         foodText,
-        totalProtein,
-        totalCalories,
-        items: data,
+        totalProtein: protein,
+        totalCalories: calories,
+        items: [result],
       });
     } catch (error: any) {
       console.error("Nutrition analysis error:", error);
