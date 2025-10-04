@@ -51,8 +51,10 @@ export default function Dashboard() {
 
   const handleConnect = async () => {
     try {
+      console.log("Connecting to Ultrahuman - fetching config...");
       const response = await fetch('/api/config/ultrahuman');
       if (!response.ok) {
+        console.error("Config fetch failed:", response.status);
         toast({
           variant: "destructive",
           title: "Configuration error",
@@ -62,15 +64,24 @@ export default function Dashboard() {
       }
       
       const config = await response.json();
+      console.log("Config received:", config);
+      
       const redirectUri = `${window.location.origin}/auth/ultrahuman/callback`;
       const scope = "ring_data cgm_data profile";
+      
+      console.log("Redirect URI:", redirectUri);
+      console.log("User ID:", user?.id);
       
       localStorage.setItem("ultrahuman_state", user?.id || "");
       
       const authUrl = `https://partner.ultrahuman.com/oauth/authorize?response_type=code&client_id=${config.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${user?.id}`;
       
+      console.log("Authorization URL:", authUrl);
+      console.log("Redirecting to Ultrahuman...");
+      
       window.location.href = authUrl;
     } catch (error: any) {
+      console.error("Connect error:", error);
       toast({
         variant: "destructive",
         title: "Connection failed",
