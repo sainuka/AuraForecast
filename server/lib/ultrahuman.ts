@@ -97,3 +97,35 @@ export async function fetchHealthMetrics(
     throw new Error("Failed to fetch health metrics");
   }
 }
+
+export async function fetchDailyMetricsWithDirectToken(
+  date: string,
+  email?: string
+): Promise<any> {
+  const accessToken = process.env.ULTRAHUMAN_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error("ULTRAHUMAN_ACCESS_TOKEN not configured");
+  }
+
+  try {
+    const params: any = { date };
+    if (email) {
+      params.email = email;
+    }
+
+    const response = await axios.get(
+      `${ULTRAHUMAN_BASE_URL}/api/v1/partner/daily_metrics`,
+      {
+        params,
+        headers: {
+          Authorization: accessToken,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching daily metrics:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "Failed to fetch daily metrics");
+  }
+}
