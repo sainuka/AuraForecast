@@ -1,10 +1,15 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { initSupabase, getSupabaseClient } from "@/lib/supabase";
-import type { User } from "@supabase/supabase-js";
-import type { SupabaseClient } from "@supabase/supabase-js";
+
+interface DemoUser {
+  id: string;
+  email: string;
+  user_metadata?: {
+    name?: string;
+  };
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: DemoUser | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -13,128 +18,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const DEMO_USER: DemoUser = {
+  id: "4d36312c-54ad-47da-a514-6535093b4280",
+  email: "demo@wellness-tracker.com",
+  user_metadata: {
+    name: "Demo User",
+  },
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
+  const [user, setUser] = useState<DemoUser | null>(DEMO_USER);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    let subscription: any;
-    let mounted = true;
-    
-    initSupabase().then(client => {
-      if (!mounted) return;
-      
-      setSupabase(client);
-      
-      client.auth.getSession().then(({ data: { session } }) => {
-        if (!mounted) return;
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      });
-
-      const {
-        data: { subscription: sub },
-      } = client.auth.onAuthStateChange((_event, session) => {
-        if (!mounted) return;
-        setUser(session?.user ?? null);
-      });
-      
-      subscription = sub;
-    });
-
-    return () => {
-      mounted = false;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
+    setUser(DEMO_USER);
+    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    if (!supabase) throw new Error("Supabase not initialized");
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    if (data.user && data.session) {
-      const token = data.session.access_token;
-      
-      await fetch("/api/users/sync", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.user_metadata?.name || "",
-        }),
-      });
-    }
-
-    setUser(data.user);
+    setUser(DEMO_USER);
   };
 
   const signup = async (email: string, password: string, name?: string) => {
-    if (!supabase) throw new Error("Supabase not initialized");
-    
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: name || "",
-        },
-        emailRedirectTo: window.location.origin + "/dashboard",
-      },
-    });
-
-    if (error) {
-      console.error("Supabase signup error:", error);
-      throw new Error(error.message);
-    }
-
-    console.log("Signup response:", { user: data.user, session: !!data.session });
-
-    if (data.user && data.session) {
-      const token = data.session.access_token;
-      
-      const response = await fetch("/api/users/sync", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          id: data.user.id,
-          email: data.user.email,
-          name: name || "",
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("User sync error:", errorData);
-      }
-      
-      setUser(data.user);
-    } else if (data.user && !data.session) {
-      throw new Error("Email confirmation is required. Please go to Supabase Dashboard → Authentication → Providers → Email and toggle off 'Confirm email', then sign up again.");
-    }
+    setUser(DEMO_USER);
   };
 
   const logout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    setUser(null);
+    setUser(DEMO_USER);
   };
 
   return (
