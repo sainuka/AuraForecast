@@ -399,6 +399,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Data Export routes
+  app.get("/api/export/metrics/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { startDate, endDate } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "Start and end dates are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      const metrics = await storage.getMetricsByDateRange(userId, start, end);
+
+      const csvHeaders = [
+        "Date",
+        "Sleep Score",
+        "Sleep Duration (hrs)",
+        "HRV",
+        "Resting Heart Rate",
+        "Recovery Score",
+        "Steps",
+        "Avg Glucose (mg/dL)",
+        "Glucose Variability",
+        "Temperature (°C)",
+        "VO2 Max"
+      ].join(",");
+
+      const csvRows = metrics.map(m => [
+        new Date(m.date).toISOString().split('T')[0],
+        m.sleepScore || "",
+        m.sleepDuration || "",
+        m.hrv || "",
+        m.restingHeartRate || "",
+        m.recoveryScore || "",
+        m.steps || "",
+        m.avgGlucose || "",
+        m.glucoseVariability || "",
+        m.temperature || "",
+        m.vo2Max || ""
+      ].join(","));
+
+      const csv = [csvHeaders, ...csvRows].join("\n");
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="health-metrics-${startDate}-to-${endDate}.csv"`);
+      res.send(csv);
+    } catch (error: any) {
+      console.error("Export metrics error:", error);
+      res.status(400).json({ error: error.message || "Failed to export metrics" });
+    }
+  });
+
+  app.get("/api/export/goals/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const goals = await storage.getGoalsByUserId(userId);
+
+      const csvHeaders = [
+        "Goal Type",
+        "Target Metric",
+        "Target Value",
+        "Baseline Value",
+        "Current Value",
+        "Status",
+        "Deadline",
+        "Description",
+        "Created At"
+      ].join(",");
+
+      const csvRows = goals.map(g => [
+        g.goalType,
+        g.targetMetric,
+        g.targetValue,
+        g.baselineValue || "",
+        g.currentValue || "",
+        g.status,
+        g.deadline ? new Date(g.deadline).toISOString().split('T')[0] : "",
+        `"${(g.description || "").replace(/"/g, '""')}"`,
+        new Date(g.createdAt).toISOString().split('T')[0]
+      ].join(","));
+
+      const csv = [csvHeaders, ...csvRows].join("\n");
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="health-goals-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error: any) {
+      console.error("Export goals error:", error);
+      res.status(400).json({ error: error.message || "Failed to export goals" });
+    }
+  });
+
+  app.get("/api/export/cycles/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { startDate, endDate } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "Start and end dates are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      const cycles = await storage.getCyclesByDateRange(userId, start, end);
+
+      const csvHeaders = [
+        "Period Start Date",
+        "Period End Date",
+        "Cycle Length (days)",
+        "Flow Intensity",
+        "Symptoms",
+        "Notes"
+      ].join(",");
+
+      const csvRows = cycles.map(c => [
+        new Date(c.periodStartDate).toISOString().split('T')[0],
+        c.periodEndDate ? new Date(c.periodEndDate).toISOString().split('T')[0] : "",
+        c.cycleLength || "",
+        c.flowIntensity || "",
+        c.symptoms ? `"${c.symptoms.join(", ")}"` : "",
+        `"${(c.notes || "").replace(/"/g, '""')}"`
+      ].join(","));
+
+      const csv = [csvHeaders, ...csvRows].join("\n");
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="cycle-tracking-${startDate}-to-${endDate}.csv"`);
+      res.send(csv);
+    } catch (error: any) {
+      console.error("Export cycles error:", error);
+      res.status(400).json({ error: error.message || "Failed to export cycles" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

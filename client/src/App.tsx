@@ -11,6 +11,7 @@ import Signup from "@/pages/auth/Signup";
 import Dashboard from "@/pages/Dashboard";
 import Trends from "@/pages/Trends";
 import Goals from "@/pages/Goals";
+import Export from "@/pages/Export";
 import UltrahumanCallback from "@/pages/UltrahumanCallback";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/trends" component={Trends} />
       <Route path="/goals" component={Goals} />
+      <Route path="/export" component={Export} />
       <Route path="/auth/ultrahuman/callback" component={UltrahumanCallback} />
       <Route component={NotFound} />
     </Switch>

@@ -29,6 +29,7 @@ export interface IStorage {
   
   // Health Metrics
   getMetricsByUserId(userId: string, limit?: number): Promise<HealthMetric[]>;
+  getMetricsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<HealthMetric[]>;
   createMetric(metric: InsertHealthMetric): Promise<HealthMetric>;
   
   // Wellness Forecasts
@@ -37,6 +38,7 @@ export interface IStorage {
   
   // Cycle Tracking
   getCyclesByUserId(userId: string, limit?: number): Promise<CycleTracking[]>;
+  getCyclesByDateRange(userId: string, startDate: Date, endDate: Date): Promise<CycleTracking[]>;
   getLatestCycle(userId: string): Promise<CycleTracking | undefined>;
   createCycle(cycle: InsertCycleTracking): Promise<CycleTracking>;
   updateCycle(id: string, cycle: Partial<InsertCycleTracking>): Promise<CycleTracking | undefined>;
@@ -96,6 +98,20 @@ export class DbStorage implements IStorage {
       .limit(limit);
   }
 
+  async getMetricsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<HealthMetric[]> {
+    return await db
+      .select()
+      .from(healthMetrics)
+      .where(
+        and(
+          eq(healthMetrics.userId, userId),
+          gte(healthMetrics.date, startDate),
+          lte(healthMetrics.date, endDate)
+        )
+      )
+      .orderBy(desc(healthMetrics.date));
+  }
+
   async createMetric(insertMetric: InsertHealthMetric): Promise<HealthMetric> {
     const result = await db.insert(healthMetrics).values(insertMetric).returning();
     return result[0];
@@ -140,6 +156,20 @@ export class DbStorage implements IStorage {
   async createCycle(insertCycle: InsertCycleTracking): Promise<CycleTracking> {
     const result = await db.insert(cycleTracking).values(insertCycle).returning();
     return result[0];
+  }
+
+  async getCyclesByDateRange(userId: string, startDate: Date, endDate: Date): Promise<CycleTracking[]> {
+    return await db
+      .select()
+      .from(cycleTracking)
+      .where(
+        and(
+          eq(cycleTracking.userId, userId),
+          gte(cycleTracking.periodStartDate, startDate),
+          lte(cycleTracking.periodStartDate, endDate)
+        )
+      )
+      .orderBy(desc(cycleTracking.periodStartDate));
   }
 
   async updateCycle(id: string, updateData: Partial<InsertCycleTracking>): Promise<CycleTracking | undefined> {
