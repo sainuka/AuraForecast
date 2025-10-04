@@ -8,49 +8,34 @@ import bcrypt from "bcryptjs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Config route - MUST be before any middleware that might interfere
+  app.get("/api/config/supabase", (_req, res) => {
+    res.json({
+      url: process.env.SUPABASE_URL || '',
+      anonKey: process.env.SUPABASE_ANON_KEY || '',
+    });
+  });
+  
   // Auth routes
-  app.post("/api/auth/signup", async (req, res) => {
+  app.post("/api/users/sync", async (req, res) => {
     try {
-      const validatedData = insertUserSchema.parse(req.body);
+      const { id, email, name } = req.body;
       
-      const existingUser = await storage.getUserByEmail(validatedData.email);
+      const existingUser = await storage.getUserById(id);
       if (existingUser) {
-        return res.status(400).json({ error: "User already exists" });
+        return res.json({ user: existingUser });
       }
 
-      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
       const user = await storage.createUser({
-        ...validatedData,
-        password: hashedPassword,
+        id,
+        email,
+        name: name || null,
       });
 
-      const { password, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword });
+      res.json({ user });
     } catch (error: any) {
-      console.error("Signup error:", error);
-      res.status(400).json({ error: error.message || "Signup failed" });
-    }
-  });
-
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-
-      const { password: _, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword });
-    } catch (error: any) {
-      console.error("Login error:", error);
-      res.status(400).json({ error: error.message || "Login failed" });
+      console.error("User sync error:", error);
+      res.status(400).json({ error: error.message || "User sync failed" });
     }
   });
 

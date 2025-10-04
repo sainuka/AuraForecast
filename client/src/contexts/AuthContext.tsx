@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import type { User } from "@shared/schema";
+import { initSupabase, getSupabaseClient } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name?: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -14,52 +16,86 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    let subscription: any;
+    
+    initSupabase().then(client => {
+      setSupabase(client);
+      
+      client.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      });
+
+      const {
+        data: { subscription: sub },
+      } = client.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+      });
+      
+      subscription = sub;
+    });
+
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+    if (!supabase) throw new Error("Supabase not initialized");
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Login failed");
+    if (error) {
+      throw new Error(error.message);
     }
 
-    const data = await response.json();
     setUser(data.user);
-    localStorage.setItem("user", JSON.stringify(data.user));
   };
 
   const signup = async (email: string, password: string, name?: string) => {
-    const response = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
+    if (!supabase) throw new Error("Supabase not initialized");
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: name || "",
+        },
+      },
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Signup failed");
+    if (error) {
+      throw new Error(error.message);
     }
 
-    const data = await response.json();
+    if (data.user) {
+      await fetch("/api/users/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: data.user.id,
+          email: data.user.email,
+          name: name || "",
+        }),
+      });
+    }
+
     setUser(data.user);
-    localStorage.setItem("user", JSON.stringify(data.user));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("user");
   };
 
   return (
