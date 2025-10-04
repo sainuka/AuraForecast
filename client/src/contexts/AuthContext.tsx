@@ -124,11 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const errorData = await response.json();
         console.error("User sync error:", errorData);
       }
+      
+      setUser(data.user);
     } else if (data.user && !data.session) {
-      console.warn("User created but no session - email confirmation may be required");
+      throw new Error("Email confirmation is required. Please go to Supabase Dashboard → Authentication → Providers → Email and toggle off 'Confirm email', then sign up again.");
     }
-
-    setUser(data.user);
   };
 
   const logout = async () => {
