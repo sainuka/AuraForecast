@@ -405,6 +405,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId } = req.params;
       const { startDate, endDate } = req.query;
 
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      const { verifySupabaseToken } = await import('./lib/supabase');
+      const authenticatedUser = await verifySupabaseToken(token);
+
+      if (authenticatedUser.id !== userId) {
+        return res.status(403).json({ error: "Forbidden: Cannot export data for other users" });
+      }
+
       if (!startDate || !endDate) {
         return res.status(400).json({ error: "Start and end dates are required" });
       }
@@ -456,6 +469,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/export/goals/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      const { verifySupabaseToken } = await import('./lib/supabase');
+      const authenticatedUser = await verifySupabaseToken(token);
+
+      if (authenticatedUser.id !== userId) {
+        return res.status(403).json({ error: "Forbidden: Cannot export data for other users" });
+      }
+
       const goals = await storage.getGoalsByUserId(userId);
 
       const csvHeaders = [
@@ -497,6 +524,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const { startDate, endDate } = req.query;
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      const { verifySupabaseToken } = await import('./lib/supabase');
+      const authenticatedUser = await verifySupabaseToken(token);
+
+      if (authenticatedUser.id !== userId) {
+        return res.status(403).json({ error: "Forbidden: Cannot export data for other users" });
+      }
 
       if (!startDate || !endDate) {
         return res.status(400).json({ error: "Start and end dates are required" });

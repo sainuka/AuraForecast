@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Target, ArrowLeft, Plus } from "lucide-react";
+import { Target, ArrowLeft, Plus, TrendingUp, Download, Home } from "lucide-react";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { GoalDialog } from "@/components/goals/GoalDialog";
 import { useState } from "react";
@@ -59,12 +59,34 @@ export default function Goals() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
           <div>
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="mb-4" data-testid="button-back-dashboard">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
+            <div className="flex items-center justify-between mb-4">
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm" data-testid="button-back-dashboard">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm" data-testid="button-nav-dashboard">
+                    <Home className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </Button>
+                </Link>
+                <Link href="/trends">
+                  <Button variant="ghost" size="sm" data-testid="button-nav-trends">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Trends
+                  </Button>
+                </Link>
+                <Link href="/export">
+                  <Button variant="ghost" size="sm" data-testid="button-nav-export">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
+                </Link>
+              </div>
+            </div>
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
                 <h1 className="text-3xl font-heading font-bold flex items-center gap-3">

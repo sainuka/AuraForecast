@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getSupabaseClient } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,13 @@ export default function Export() {
 
     setIsExporting(true);
     try {
+      const supabase = await getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
+      }
+
       let url = "";
       const startStr = startDate.toISOString().split('T')[0];
       const endStr = endDate.toISOString().split('T')[0];
@@ -37,7 +45,11 @@ export default function Export() {
           break;
       }
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
       
       if (!response.ok) {
         throw new Error("Export failed");

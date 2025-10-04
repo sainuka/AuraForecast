@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Activity, Moon, Heart, Droplet, Thermometer, ArrowLeft } from "lucide-react";
+import { TrendingUp, Activity, Moon, Heart, Droplet, Thermometer, ArrowLeft, Target, Download, Home } from "lucide-react";
 import { HistoricalChart } from "@/components/trends/HistoricalChart";
 import { AnomalyDetector } from "@/components/trends/AnomalyDetector";
 import { CorrelationHeatmap } from "@/components/trends/CorrelationHeatmap";
@@ -43,12 +43,34 @@ export default function Trends() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
           <div>
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="mb-4" data-testid="button-back-dashboard">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
+            <div className="flex items-center justify-between mb-4">
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm" data-testid="button-back-dashboard">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm" data-testid="button-nav-dashboard">
+                    <Home className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </Button>
+                </Link>
+                <Link href="/goals">
+                  <Button variant="ghost" size="sm" data-testid="button-nav-goals">
+                    <Target className="w-4 h-4 mr-2" />
+                    Goals
+                  </Button>
+                </Link>
+                <Link href="/export">
+                  <Button variant="ghost" size="sm" data-testid="button-nav-export">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
+                </Link>
+              </div>
+            </div>
             <h1 className="text-3xl font-heading font-bold flex items-center gap-3">
               <TrendingUp className="w-8 h-8 text-primary" />
               Health Trends & Analysis
