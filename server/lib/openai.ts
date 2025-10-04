@@ -84,7 +84,7 @@ Respond in JSON format with this structure:
   try {
     const client = getOpenAIClient();
     const response = await client.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -96,7 +96,7 @@ Respond in JSON format with this structure:
         },
       ],
       response_format: { type: "json_object" },
-      max_completion_tokens: 1000,
+      max_tokens: 1000,
     });
 
     const result = JSON.parse(response.choices[0].message.content || "{}");
