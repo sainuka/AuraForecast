@@ -9,7 +9,7 @@ import { HealthMetricsChart } from "@/components/dashboard/HealthMetricsChart";
 import { UltrahumanConnection } from "@/components/dashboard/UltrahumanConnection";
 import { CycleTrackingCard } from "@/components/dashboard/CycleTrackingCard";
 import { CycleTrackingDialog } from "@/components/cycle/CycleTrackingDialog";
-import { Heart, Moon, Activity, Droplet, Thermometer, LogOut, TrendingUp } from "lucide-react";
+import { Heart, Moon, Activity, Droplet, Thermometer, LogOut, TrendingUp, Target } from "lucide-react";
 import { Link } from "wouter";
 import { calculateCyclePhase } from "@/lib/cycleUtils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -131,6 +131,12 @@ export default function Dashboard() {
                 <Button variant="ghost" size="sm" data-testid="button-trends">
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Trends
+                </Button>
+              </Link>
+              <Link href="/goals">
+                <Button variant="ghost" size="sm" data-testid="button-goals">
+                  <Target className="w-4 h-4 mr-2" />
+                  Goals
                 </Button>
               </Link>
               <ThemeToggle />

@@ -10,6 +10,7 @@ import Login from "@/pages/auth/Login";
 import Signup from "@/pages/auth/Signup";
 import Dashboard from "@/pages/Dashboard";
 import Trends from "@/pages/Trends";
+import Goals from "@/pages/Goals";
 import UltrahumanCallback from "@/pages/UltrahumanCallback";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/signup" component={Signup} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/trends" component={Trends} />
+      <Route path="/goals" component={Goals} />
       <Route path="/auth/ultrahuman/callback" component={UltrahumanCallback} />
       <Route component={NotFound} />
     </Switch>

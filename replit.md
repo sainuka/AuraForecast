@@ -17,8 +17,9 @@ A personalized women's health tracking application that integrates with Ultrahum
 3. **Health Metrics Tracking**: Sleep, HRV, recovery, glucose, temperature, steps
 4. **Menstrual Cycle Tracking**: Track period dates, flow intensity, and symptoms correlated with biometrics
 5. **AI Wellness Forecasts**: Personalized predictions via Supabase Edge Functions with cycle-aware insights
-6. **Data Visualization**: Interactive charts showing health metric trends
-7. **Dark/Light Mode**: Theme toggle with persistent user preference
+6. **Historical Data Analysis**: Trend detection, anomaly alerts, correlation heatmaps, and AI-powered insights
+7. **Data Visualization**: Interactive charts showing health metric trends
+8. **Dark/Light Mode**: Theme toggle with persistent user preference
 
 ## Environment Variables
 Required secrets in Replit Secrets:
@@ -79,7 +80,15 @@ The workflow "Start application" runs `npm run dev` which starts both Express ba
 
 ## Recent Changes (Oct 2025)
 
-### Cycle Tracking Feature (Latest)
+### Historical Data Analysis Feature (Latest)
+- **Trends Page**: Multi-tab interface with Overview, Metrics, Correlations, and Anomalies views
+- **Anomaly Detection**: Statistical z-score analysis identifies unusual patterns (>2σ from mean)
+- **Correlation Analysis**: Heatmap showing relationships between health metrics
+- **Trend Insights**: AI-powered analysis comparing recent vs historical data
+- **Visualizations**: 30-day time-series charts for all metrics with Recharts
+- **Cycle Integration**: Trend insights consider menstrual cycle phase context
+
+### Cycle Tracking Feature
 - **Database**: Added `cycle_tracking` table for menstrual cycle data
 - **UI Components**: CycleTrackingDialog (input form) and CycleTrackingCard (dashboard display)
 - **Cycle Phase Calculation**: Determines follicular/ovulation/luteal/menstrual phases

@@ -62,6 +62,21 @@ export const cycleTracking = pgTable("cycle_tracking", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const healthGoals = pgTable("health_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalType: text("goal_type").notNull(),
+  targetMetric: text("target_metric").notNull(),
+  targetValue: decimal("target_value", { precision: 10, scale: 2 }).notNull(),
+  baselineValue: decimal("baseline_value", { precision: 10, scale: 2 }),
+  currentValue: decimal("current_value", { precision: 10, scale: 2 }),
+  deadline: timestamp("deadline"),
+  status: text("status").notNull().default("active"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -89,6 +104,12 @@ export const insertCycleTrackingSchema = createInsertSchema(cycleTracking).omit(
   updatedAt: true,
 });
 
+export const insertHealthGoalSchema = createInsertSchema(healthGoals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UltrahumanToken = typeof ultrahumanTokens.$inferSelect;
@@ -99,3 +120,5 @@ export type WellnessForecast = typeof wellnessForecasts.$inferSelect;
 export type InsertWellnessForecast = z.infer<typeof insertWellnessForecastSchema>;
 export type CycleTracking = typeof cycleTracking.$inferSelect;
 export type InsertCycleTracking = z.infer<typeof insertCycleTrackingSchema>;
+export type HealthGoal = typeof healthGoals.$inferSelect;
+export type InsertHealthGoal = z.infer<typeof insertHealthGoalSchema>;

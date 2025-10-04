@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertCycleTrackingSchema } from "@shared/schema";
+import { insertUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema } from "@shared/schema";
 import { exchangeCodeForTokens, refreshAccessToken, fetchHealthMetrics } from "./lib/ultrahuman";
 import { generateWellnessForecast } from "./lib/openai";
 
@@ -324,6 +324,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Update cycle error:", error);
       res.status(400).json({ error: error.message || "Failed to update cycle" });
+    }
+  });
+
+  // Health Goals routes
+  app.get("/api/goals/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { status } = req.query;
+      const goals = await storage.getGoalsByUserId(userId, status as string);
+      res.json(goals);
+    } catch (error: any) {
+      console.error("Get goals error:", error);
+      res.status(400).json({ error: error.message || "Failed to get goals" });
+    }
+  });
+
+  app.get("/api/goals/detail/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const goal = await storage.getGoalById(id);
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+      res.json(goal);
+    } catch (error: any) {
+      console.error("Get goal error:", error);
+      res.status(400).json({ error: error.message || "Failed to get goal" });
+    }
+  });
+
+  app.post("/api/goals", async (req, res) => {
+    try {
+      const result = insertHealthGoalSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid goal data", 
+          details: result.error.issues 
+        });
+      }
+
+      const goal = await storage.createGoal(result.data);
+      res.json(goal);
+    } catch (error: any) {
+      console.error("Create goal error:", error);
+      res.status(400).json({ error: error.message || "Failed to create goal" });
+    }
+  });
+
+  app.patch("/api/goals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const goal = await storage.updateGoal(id, req.body);
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+
+      res.json(goal);
+    } catch (error: any) {
+      console.error("Update goal error:", error);
+      res.status(400).json({ error: error.message || "Failed to update goal" });
+    }
+  });
+
+  app.delete("/api/goals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteGoal(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Delete goal error:", error);
+      res.status(400).json({ error: error.message || "Failed to delete goal" });
     }
   });
 

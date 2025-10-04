@@ -9,9 +9,11 @@ import {
   type InsertWellnessForecast,
   type CycleTracking,
   type InsertCycleTracking,
+  type HealthGoal,
+  type InsertHealthGoal,
 } from "@shared/schema";
 import { db } from "./db";
-import { users, ultrahumanTokens, healthMetrics, wellnessForecasts, cycleTracking } from "@shared/schema";
+import { users, ultrahumanTokens, healthMetrics, wellnessForecasts, cycleTracking, healthGoals } from "@shared/schema";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
@@ -38,6 +40,13 @@ export interface IStorage {
   getLatestCycle(userId: string): Promise<CycleTracking | undefined>;
   createCycle(cycle: InsertCycleTracking): Promise<CycleTracking>;
   updateCycle(id: string, cycle: Partial<InsertCycleTracking>): Promise<CycleTracking | undefined>;
+  
+  // Health Goals
+  getGoalsByUserId(userId: string, status?: string): Promise<HealthGoal[]>;
+  getGoalById(id: string): Promise<HealthGoal | undefined>;
+  createGoal(goal: InsertHealthGoal): Promise<HealthGoal>;
+  updateGoal(id: string, goal: Partial<InsertHealthGoal>): Promise<HealthGoal | undefined>;
+  deleteGoal(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -140,6 +149,42 @@ export class DbStorage implements IStorage {
       .where(eq(cycleTracking.id, id))
       .returning();
     return result[0];
+  }
+
+  // Health Goals
+  async getGoalsByUserId(userId: string, status?: string): Promise<HealthGoal[]> {
+    const conditions = status 
+      ? and(eq(healthGoals.userId, userId), eq(healthGoals.status, status))
+      : eq(healthGoals.userId, userId);
+    
+    return await db
+      .select()
+      .from(healthGoals)
+      .where(conditions)
+      .orderBy(desc(healthGoals.createdAt));
+  }
+
+  async getGoalById(id: string): Promise<HealthGoal | undefined> {
+    const result = await db.select().from(healthGoals).where(eq(healthGoals.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createGoal(insertGoal: InsertHealthGoal): Promise<HealthGoal> {
+    const result = await db.insert(healthGoals).values(insertGoal).returning();
+    return result[0];
+  }
+
+  async updateGoal(id: string, updateData: Partial<InsertHealthGoal>): Promise<HealthGoal | undefined> {
+    const result = await db
+      .update(healthGoals)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(healthGoals.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteGoal(id: string): Promise<void> {
+    await db.delete(healthGoals).where(eq(healthGoals.id, id));
   }
 }
 
