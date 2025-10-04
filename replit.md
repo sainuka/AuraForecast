@@ -24,6 +24,7 @@ Required secrets in Replit Secrets:
 - `DATABASE_URL`: Neon PostgreSQL connection string (will migrate to Supabase)
 - `SUPABASE_URL`: Supabase project URL
 - `SUPABASE_ANON_KEY`: Supabase anonymous key for client auth
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key for server-side token validation (required)
 - `OPENAI_API_KEY`: OpenAI API key (used in edge functions)
 - `ULTRAHUMAN_CLIENT_ID`: Ultrahuman Partner API client ID
 - `ULTRAHUMAN_CLIENT_SECRET`: Ultrahuman Partner API client secret

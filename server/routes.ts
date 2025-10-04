@@ -29,6 +29,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
+      const token = authHeader.replace('Bearer ', '');
+      
+      const { verifySupabaseToken } = await import('./lib/supabase');
+      const authenticatedUser = await verifySupabaseToken(token);
+
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ 
@@ -38,6 +43,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id, email, name } = result.data;
+      
+      if (id !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden: User ID mismatch" });
+      }
       
       const existingUser = await storage.getUserById(id);
       if (existingUser) {
@@ -53,7 +62,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ user });
     } catch (error: any) {
       console.error("User sync error:", error);
-      res.status(400).json({ error: error.message || "User sync failed" });
+      res.status(error.message?.includes('token') ? 401 : 400).json({ 
+        error: error.message || "User sync failed" 
+      });
     }
   });
 
