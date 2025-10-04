@@ -18,8 +18,9 @@ A personalized women's health tracking application that integrates with Ultrahum
 4. **Menstrual Cycle Tracking**: Track period dates, flow intensity, and symptoms correlated with biometrics
 5. **AI Wellness Forecasts**: Personalized predictions via Supabase Edge Functions with cycle-aware insights
 6. **Historical Data Analysis**: Trend detection, anomaly alerts, correlation heatmaps, and AI-powered insights
-7. **Data Visualization**: Interactive charts showing health metric trends
-8. **Dark/Light Mode**: Theme toggle with persistent user preference
+7. **Health Goal Setting**: Create and track personalized health targets with progress monitoring and deadline management
+8. **Data Visualization**: Interactive charts showing health metric trends
+9. **Dark/Light Mode**: Theme toggle with persistent user preference
 
 ## Environment Variables
 Required secrets in Replit Secrets:
@@ -37,6 +38,7 @@ Required secrets in Replit Secrets:
 - **ultrahuman_tokens**: OAuth tokens for Ultrahuman API access
 - **health_metrics**: Daily health metrics from Ultrahuman devices
 - **cycle_tracking**: Menstrual cycle data (period dates, flow, symptoms, notes)
+- **health_goals**: Personal health targets with progress tracking (improve/reduce/maintain types)
 - **wellness_forecasts**: AI-generated wellness predictions and recommendations
 
 ## API Routes
@@ -62,6 +64,13 @@ Required secrets in Replit Secrets:
 - `POST /api/cycles`: Create new cycle entry
 - `PATCH /api/cycles/:id`: Update existing cycle entry
 
+### Health Goals
+- `GET /api/goals/:userId`: Get user's health goals (supports ?status=active filter)
+- `GET /api/goals/detail/:id`: Get specific goal details
+- `POST /api/goals`: Create new health goal
+- `PATCH /api/goals/:id`: Update existing goal (progress, deadline, description)
+- `DELETE /api/goals/:id`: Delete health goal
+
 ## User Flow
 1. Sign up or log in to the application
 2. Connect Ultrahuman device via OAuth flow
@@ -80,7 +89,16 @@ The workflow "Start application" runs `npm run dev` which starts both Express ba
 
 ## Recent Changes (Oct 2025)
 
-### Historical Data Analysis Feature (Latest)
+### Health Goal Setting System (Latest)
+- **Goal Types**: Support for improve, reduce, and maintain goal types
+- **Progress Tracking**: Visual progress bars with baseline preservation for accurate tracking
+- **Deadline Management**: Optional deadlines with days remaining/overdue indicators
+- **Smart Completion**: Goal-type aware completion logic (improve: reach target, reduce: drop below target, maintain: stay within 5% tolerance)
+- **Baseline Tracking**: Stable baseline values for reduce goals to accurately show progress from starting point
+- **UI Components**: GoalCard with progress visualization, GoalDialog for create/edit with metric auto-population
+- **Integration**: Goals page with active/completed tabs and navigation from Dashboard
+
+### Historical Data Analysis Feature
 - **Trends Page**: Multi-tab interface with Overview, Metrics, Correlations, and Anomalies views
 - **Anomaly Detection**: Statistical z-score analysis identifies unusual patterns (>2σ from mean)
 - **Correlation Analysis**: Heatmap showing relationships between health metrics
