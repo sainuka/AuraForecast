@@ -891,18 +891,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[Nutrition] USDA API error:", response.status, errorText);
-        throw new Error(`USDA API returned ${response.status}: ${errorText}`);
+        return res.status(502).json({ 
+          error: "Unable to fetch nutrition data. Please try again later." 
+        });
       }
 
       const data = await response.json();
       console.log("[Nutrition] USDA API found", data.foods?.length || 0, "foods");
       
       if (!data.foods || data.foods.length === 0) {
-        return res.json({
-          foodText,
-          totalProtein: 0,
-          totalCalories: 0,
-          items: [],
+        return res.status(404).json({
+          error: `No nutrition data found for "${foodText}". Try a more specific food name like "chicken breast" or "salmon fillet".`
         });
       }
 

@@ -54,9 +54,26 @@ export function ProteinCalculator() {
         description: `Total protein: ${result.totalProtein.toFixed(1)}g`,
       });
     } catch (error: any) {
+      let errorMessage = "Failed to analyze nutrition";
+      
+      if (error.message) {
+        try {
+          const parts = error.message.split(": ");
+          if (parts.length > 1) {
+            const jsonPart = parts.slice(1).join(": ");
+            const errorData = JSON.parse(jsonPart);
+            errorMessage = errorData.error || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to analyze nutrition",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
