@@ -242,31 +242,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metricsResults = await Promise.all(promises);
       const validMetrics = metricsResults.filter((m) => m !== null);
 
+      // Fetch all existing metrics for this user to check for duplicates
+      const existingMetrics = await storage.getMetricsByUserId(userId, 30);
+      const existingDates = new Set(
+        existingMetrics.map(m => new Date(m.date).toISOString().split('T')[0])
+      );
+
+      let insertedCount = 0;
+
       // Store metrics in database
-      for (const metricData of validMetrics) {
-        if (metricData) {
-          // Parse the date from the metrics or use today's date
-          const metricDate = new Date();
+      for (const response of validMetrics) {
+        if (!response || !response.data) continue;
+        
+        // Handle both single object and array responses
+        const dataArray = Array.isArray(response.data) ? response.data : [response.data];
+        
+        for (const metricData of dataArray) {
+          // Skip if no actual metric data
+          if (!metricData || typeof metricData !== 'object') continue;
+          
+          // Get the date from the metric data or skip
+          const dateStr = metricData.date;
+          if (!dateStr) continue;
+          
+          const metricDate = new Date(dateStr);
+          if (isNaN(metricDate.getTime())) continue;
+          
+          // Check if we already have this metric
+          const metricDateStr = metricDate.toISOString().split('T')[0];
+          if (existingDates.has(metricDateStr)) continue;
           
           await storage.createMetric({
             userId,
             date: metricDate,
-            sleepScore: metricData.sleep_score || metricData.sleep?.sleep_score,
-            sleepDuration: metricData.total_sleep || metricData.sleep?.total_sleep,
-            hrv: metricData.hrv || metricData.avg_sleep_hrv,
-            restingHeartRate: metricData.night_rhr || metricData.sleep_rhr,
-            recoveryScore: metricData.recovery?.recovery_index,
-            steps: metricData.steps,
-            avgGlucose: metricData.average_glucose,
-            glucoseVariability: metricData.glucose_variability,
-            temperature: metricData.average_body_temperature,
-            vo2Max: metricData.vo2_max,
+            sleepScore: metricData.sleep?.sleep_score || null,
+            sleepDuration: metricData.sleep?.total_sleep || null,
+            hrv: metricData.avg_sleep_hrv || metricData.hrv || null,
+            restingHeartRate: metricData.sleep_rhr || metricData.night_rhr || null,
+            recoveryScore: metricData.recovery?.recovery_index || null,
+            steps: metricData.steps || null,
+            avgGlucose: metricData.average_glucose || null,
+            glucoseVariability: metricData.glucose_variability || null,
+            temperature: metricData.average_body_temperature || null,
+            vo2Max: metricData.vo2_max || null,
             rawData: metricData,
           });
+          
+          insertedCount++;
+          existingDates.add(metricDateStr);
         }
       }
 
-      res.json({ success: true, metricsCount: validMetrics.length });
+      res.json({ success: true, metricsCount: insertedCount });
     } catch (error: any) {
       console.error("Direct sync error:", error);
       res.status(400).json({ error: error.message || "Direct sync failed" });
