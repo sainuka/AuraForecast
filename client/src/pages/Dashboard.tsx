@@ -23,11 +23,6 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!user) {
-      setLocation("/login");
-    }
-  }, [user, setLocation]);
 
   const { data: forecast, isLoading: forecastLoading } = useQuery({
     queryKey: ["/api/forecast", user?.id],
