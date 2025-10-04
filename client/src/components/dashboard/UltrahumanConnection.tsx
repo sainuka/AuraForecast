@@ -24,10 +24,10 @@ export function UltrahumanConnection({
         <CardHeader>
           <div className="flex items-center gap-2">
             <Activity className="w-6 h-6 text-primary" />
-            <CardTitle className="text-xl font-heading">Connect Ultrahuman</CardTitle>
+            <CardTitle className="text-xl font-heading">Ultrahuman Data</CardTitle>
           </div>
           <CardDescription>
-            Link your Ultrahuman device to start tracking your health metrics
+            Sync your health data from Ultrahuman
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -45,11 +45,12 @@ export function UltrahumanConnection({
           </div>
           <Button 
             className="w-full" 
-            onClick={onConnect}
+            onClick={onSync}
             disabled={isLoading}
-            data-testid="button-connect-ultrahuman"
+            data-testid="button-sync-data"
           >
-            {isLoading ? "Connecting..." : "Connect Ultrahuman Device"}
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            {isLoading ? "Syncing..." : "Sync Data"}
           </Button>
         </CardContent>
       </Card>
