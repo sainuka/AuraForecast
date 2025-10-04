@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calculator, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NutritionItem {
   name: string;
@@ -26,6 +27,7 @@ export function ProteinCalculator() {
   const [result, setResult] = useState<NutritionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleAnalyze = async () => {
     if (!foodText.trim()) {
@@ -49,9 +51,27 @@ export function ProteinCalculator() {
       };
 
       setResult(result);
+
+      // Save to database
+      if (user?.id) {
+        try {
+          await apiRequest("POST", "/api/food-logs", {
+            userId: user.id,
+            foodText: result.foodText,
+            totalProtein: result.totalProtein.toString(),
+            totalCalories: result.totalCalories.toString(),
+            nutritionData: result.items,
+          });
+          console.log("[ProteinCalculator] Food log saved successfully");
+        } catch (saveError) {
+          console.error("[ProteinCalculator] Failed to save food log:", saveError);
+          // Don't show error to user - saving is background operation
+        }
+      }
+
       toast({
         title: "Analysis Complete",
-        description: `Total protein: ${result.totalProtein.toFixed(1)}g`,
+        description: `Total protein: ${result.totalProtein.toFixed(1)}g (saved to your logs)`,
       });
     } catch (error: any) {
       let errorMessage = "Failed to analyze nutrition";
