@@ -113,6 +113,8 @@ export async function fetchDailyMetricsWithDirectToken(
       params.email = email;
     }
 
+    console.log(`[Ultrahuman] Fetching metrics for date: ${date}, email: ${email || 'none'}`);
+    
     const response = await axios.get(
       `${ULTRAHUMAN_BASE_URL}/api/v1/partner/daily_metrics`,
       {
@@ -122,6 +124,21 @@ export async function fetchDailyMetricsWithDirectToken(
         },
       }
     );
+
+    console.log(`[Ultrahuman] Response status: ${response.status}, data structure:`, {
+      hasData: !!response.data,
+      dataType: typeof response.data,
+      isArray: Array.isArray(response.data),
+      dataKeys: response.data ? Object.keys(response.data) : [],
+      dataLength: Array.isArray(response.data) ? response.data.length : (response.data?.data ? (Array.isArray(response.data.data) ? response.data.data.length : 'not an array') : 'no data field')
+    });
+
+    // Log actual data content for debugging
+    if (response.data?.data) {
+      console.log(`[Ultrahuman] Actual data content:`, JSON.stringify(response.data.data, null, 2).substring(0, 500));
+    } else {
+      console.log(`[Ultrahuman] No data.data field. Full response:`, JSON.stringify(response.data, null, 2).substring(0, 500));
+    }
 
     return response.data;
   } catch (error: any) {

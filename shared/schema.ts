@@ -82,6 +82,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
+// Schema for syncing users from Supabase Auth (includes id)
+export const syncUserSchema = createInsertSchema(users).omit({
+  createdAt: true,
+});
+
 export const insertUltrahumanTokenSchema = createInsertSchema(ultrahumanTokens).omit({
   id: true,
   createdAt: true,

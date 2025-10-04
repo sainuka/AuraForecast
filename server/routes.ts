@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema, updateCycleTrackingSchema, updateHealthGoalSchema } from "@shared/schema";
+import { insertUserSchema, syncUserSchema, insertCycleTrackingSchema, insertHealthGoalSchema, updateCycleTrackingSchema, updateHealthGoalSchema } from "@shared/schema";
 import { exchangeCodeForTokens, refreshAccessToken, fetchHealthMetrics, fetchDailyMetricsWithDirectToken } from "./lib/ultrahuman";
 import { generateWellnessForecast } from "./lib/openai";
 import type { User } from "@supabase/supabase-js";
@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authenticatedUser = await authenticateUser(req, res);
       if (!authenticatedUser) return;
 
-      const result = insertUserSchema.safeParse(req.body);
+      const result = syncUserSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ 
           error: "Invalid user data", 
@@ -227,10 +227,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch health metrics for the last 7 days using direct token
       const promises = [];
+      const dateStrs: string[] = [];
       for (let i = 0; i < 7; i++) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
+        dateStrs.push(dateStr);
         promises.push(
           fetchDailyMetricsWithDirectToken(dateStr, email).catch((err) => {
             console.error(`Failed to fetch metrics for ${dateStr}:`, err);
@@ -240,7 +242,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const metricsResults = await Promise.all(promises);
-      const validMetrics = metricsResults.filter((m) => m !== null);
 
       // Fetch all existing metrics for this user to check for duplicates
       const existingMetrics = await storage.getMetricsByUserId(userId, 30);
@@ -250,46 +251,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let insertedCount = 0;
 
-      // Store metrics in database
-      for (const response of validMetrics) {
-        if (!response || !response.data) continue;
+      // Process each day's metrics
+      for (let i = 0; i < metricsResults.length; i++) {
+        const response = metricsResults[i];
+        const dateStr = dateStrs[i];
         
-        // Handle both single object and array responses
-        const dataArray = Array.isArray(response.data) ? response.data : [response.data];
+        if (!response || !response.data || !response.data.metrics) continue;
         
-        for (const metricData of dataArray) {
-          // Skip if no actual metric data
-          if (!metricData || typeof metricData !== 'object') continue;
+        // Check if we already have this date
+        if (existingDates.has(dateStr)) continue;
+        
+        // Extract metrics for this specific date
+        const dateMetrics = response.data.metrics[dateStr];
+        if (!dateMetrics || !Array.isArray(dateMetrics)) continue;
+        
+        console.log(`[Sync] Processing ${dateMetrics.length} metric types for ${dateStr}`);
+        
+        // Aggregate all metrics for this date
+        const aggregated: any = {};
+        
+        for (const metric of dateMetrics) {
+          if (!metric || !metric.type || !metric.object) continue;
           
-          // Get the date from the metric data or skip
-          const dateStr = metricData.date;
-          if (!dateStr) continue;
+          const { type, object: metricObj } = metric;
           
-          const metricDate = new Date(dateStr);
-          if (isNaN(metricDate.getTime())) continue;
-          
-          // Check if we already have this metric
-          const metricDateStr = metricDate.toISOString().split('T')[0];
-          if (existingDates.has(metricDateStr)) continue;
-          
+          // Extract values based on metric type
+          if (type === 'night_rhr' || type === 'resting_hr') {
+            // Resting heart rate - take the most recent value
+            if (metricObj.values && metricObj.values.length > 0) {
+              const lastValue = metricObj.values[metricObj.values.length - 1];
+              aggregated.restingHeartRate = lastValue.value;
+            }
+          } else if (type === 'hrv') {
+            // Heart rate variability
+            if (metricObj.values && metricObj.values.length > 0) {
+              const values = metricObj.values.map((v: any) => v.value).filter((v: number) => v > 0);
+              if (values.length > 0) {
+                aggregated.hrv = Math.round(values.reduce((a: number, b: number) => a + b) / values.length);
+              }
+            }
+          } else if (type === 'steps') {
+            // Steps
+            if (metricObj.value !== undefined) {
+              aggregated.steps = metricObj.value;
+            }
+          } else if (type === 'sleep_score') {
+            // Sleep score
+            if (metricObj.value !== undefined) {
+              aggregated.sleepScore = metricObj.value;
+            }
+          } else if (type === 'sleep_duration' || type === 'total_sleep') {
+            // Sleep duration in minutes
+            if (metricObj.value !== undefined) {
+              aggregated.sleepDuration = metricObj.value;
+            }
+          } else if (type === 'recovery_score' || type === 'recovery_index') {
+            // Recovery score
+            if (metricObj.value !== undefined) {
+              aggregated.recoveryScore = metricObj.value;
+            }
+          } else if (type === 'avg_glucose' || type === 'average_glucose') {
+            // Average glucose
+            if (metricObj.value !== undefined) {
+              aggregated.avgGlucose = metricObj.value;
+            }
+          } else if (type === 'glucose_variability') {
+            // Glucose variability
+            if (metricObj.value !== undefined) {
+              aggregated.glucoseVariability = metricObj.value;
+            }
+          } else if (type === 'body_temperature' || type === 'average_body_temperature') {
+            // Body temperature
+            if (metricObj.value !== undefined) {
+              aggregated.temperature = metricObj.value;
+            }
+          } else if (type === 'vo2_max') {
+            // VO2 Max
+            if (metricObj.value !== undefined) {
+              aggregated.vo2Max = metricObj.value;
+            }
+          }
+        }
+        
+        // Only insert if we have at least one valid metric
+        if (Object.keys(aggregated).length > 0) {
           await storage.createMetric({
             userId,
-            date: metricDate,
-            sleepScore: metricData.sleep?.sleep_score || null,
-            sleepDuration: metricData.sleep?.total_sleep || null,
-            hrv: metricData.avg_sleep_hrv || metricData.hrv || null,
-            restingHeartRate: metricData.sleep_rhr || metricData.night_rhr || null,
-            recoveryScore: metricData.recovery?.recovery_index || null,
-            steps: metricData.steps || null,
-            avgGlucose: metricData.average_glucose || null,
-            glucoseVariability: metricData.glucose_variability || null,
-            temperature: metricData.average_body_temperature || null,
-            vo2Max: metricData.vo2_max || null,
-            rawData: metricData,
+            date: new Date(dateStr),
+            sleepScore: aggregated.sleepScore || null,
+            sleepDuration: aggregated.sleepDuration || null,
+            hrv: aggregated.hrv || null,
+            restingHeartRate: aggregated.restingHeartRate || null,
+            recoveryScore: aggregated.recoveryScore || null,
+            steps: aggregated.steps || null,
+            avgGlucose: aggregated.avgGlucose || null,
+            glucoseVariability: aggregated.glucoseVariability || null,
+            temperature: aggregated.temperature || null,
+            vo2Max: aggregated.vo2Max || null,
+            rawData: dateMetrics,
           });
           
           insertedCount++;
-          existingDates.add(metricDateStr);
+          existingDates.add(dateStr);
+          console.log(`[Sync] Inserted metrics for ${dateStr}:`, aggregated);
         }
       }
 
