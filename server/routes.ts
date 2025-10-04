@@ -859,6 +859,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nutrition API routes
+  app.post("/api/nutrition/analyze", async (req, res) => {
+    try {
+      const { foodText } = req.body;
+      
+      if (!foodText) {
+        return res.status(400).json({ error: "Food text is required" });
+      }
+
+      const apiKey = process.env.API_NINJAS_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "API Ninjas key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.api-ninjas.com/v1/nutrition?query=${encodeURIComponent(foodText)}`,
+        {
+          headers: {
+            'X-Api-Key': apiKey
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API Ninjas returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Calculate totals
+      const totalProtein = data.reduce((sum: number, item: any) => sum + (item.protein_g || 0), 0);
+      const totalCalories = data.reduce((sum: number, item: any) => sum + (item.calories || 0), 0);
+
+      res.json({
+        foodText,
+        totalProtein,
+        totalCalories,
+        items: data,
+      });
+    } catch (error: any) {
+      console.error("Nutrition analysis error:", error);
+      res.status(500).json({ error: error.message || "Failed to analyze nutrition" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
