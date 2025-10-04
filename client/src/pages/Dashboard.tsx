@@ -84,7 +84,7 @@ export default function Dashboard() {
     
     setIsSyncing(true);
     try {
-      await apiRequest("POST", "/api/ultrahuman/sync", { userId: user.id });
+      await apiRequest("POST", "/api/ultrahuman/sync-direct", { userId: user.id });
       
       await queryClient.invalidateQueries({ queryKey: ["/api/metrics", user.id] });
       
