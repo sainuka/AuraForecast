@@ -279,61 +279,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const { type, object: metricObj } = metric;
           
-          // Extract values based on metric type
-          if (type === 'night_rhr' || type === 'resting_hr') {
-            // Resting heart rate - take the most recent value
-            if (metricObj.values && metricObj.values.length > 0) {
-              const lastValue = metricObj.values[metricObj.values.length - 1];
-              aggregated.restingHeartRate = lastValue.value;
+          // Helper to extract value from object (handles both direct value and values array)
+          const extractValue = (obj: any, useAverage = false): number | null => {
+            if (obj.value !== undefined && obj.value !== null) {
+              return obj.value;
             }
-          } else if (type === 'hrv') {
-            // Heart rate variability
-            if (metricObj.values && metricObj.values.length > 0) {
-              const values = metricObj.values.map((v: any) => v.value).filter((v: number) => v > 0);
-              if (values.length > 0) {
-                aggregated.hrv = Math.round(values.reduce((a: number, b: number) => a + b) / values.length);
+            if (obj.values && Array.isArray(obj.values) && obj.values.length > 0) {
+              const values = obj.values.map((v: any) => v.value).filter((v: number) => v !== null && v !== undefined && !isNaN(v));
+              if (values.length === 0) return null;
+              if (useAverage) {
+                return Math.round(values.reduce((a: number, b: number) => a + b) / values.length);
               }
+              return values[values.length - 1]; // Most recent value
             }
-          } else if (type === 'steps') {
-            // Steps
-            if (metricObj.value !== undefined) {
-              aggregated.steps = metricObj.value;
-            }
-          } else if (type === 'sleep_score') {
-            // Sleep score
-            if (metricObj.value !== undefined) {
-              aggregated.sleepScore = metricObj.value;
-            }
-          } else if (type === 'sleep_duration' || type === 'total_sleep') {
-            // Sleep duration in minutes
-            if (metricObj.value !== undefined) {
-              aggregated.sleepDuration = metricObj.value;
-            }
-          } else if (type === 'recovery_score' || type === 'recovery_index') {
-            // Recovery score
-            if (metricObj.value !== undefined) {
-              aggregated.recoveryScore = metricObj.value;
-            }
-          } else if (type === 'avg_glucose' || type === 'average_glucose') {
-            // Average glucose
-            if (metricObj.value !== undefined) {
-              aggregated.avgGlucose = metricObj.value;
-            }
-          } else if (type === 'glucose_variability') {
-            // Glucose variability
-            if (metricObj.value !== undefined) {
-              aggregated.glucoseVariability = metricObj.value;
-            }
-          } else if (type === 'body_temperature' || type === 'average_body_temperature') {
-            // Body temperature
-            if (metricObj.value !== undefined) {
-              aggregated.temperature = metricObj.value;
-            }
-          } else if (type === 'vo2_max') {
-            // VO2 Max
-            if (metricObj.value !== undefined) {
-              aggregated.vo2Max = metricObj.value;
-            }
+            return null;
+          };
+          
+          // Extract values based on metric type
+          switch (type) {
+            case 'night_rhr':
+            case 'sleep_rhr':
+            case 'resting_hr':
+              aggregated.restingHeartRate = extractValue(metricObj);
+              break;
+            
+            case 'hrv':
+            case 'avg_sleep_hrv':
+              aggregated.hrv = extractValue(metricObj, true); // Use average
+              break;
+            
+            case 'steps':
+              aggregated.steps = extractValue(metricObj);
+              break;
+            
+            case 'sleep_score':
+              aggregated.sleepScore = extractValue(metricObj);
+              break;
+            
+            case 'total_sleep':
+            case 'sleep_duration':
+              aggregated.sleepDuration = extractValue(metricObj);
+              break;
+            
+            case 'recovery':
+            case 'recovery_index':
+            case 'recovery_score':
+              aggregated.recoveryScore = extractValue(metricObj);
+              break;
+            
+            case 'glucose':
+            case 'average_glucose':
+            case 'avg_glucose':
+              aggregated.avgGlucose = extractValue(metricObj);
+              break;
+            
+            case 'glucose_variability':
+              aggregated.glucoseVariability = extractValue(metricObj);
+              break;
+            
+            case 'temp':
+            case 'temperature':
+            case 'average_body_temperature':
+            case 'body_temperature':
+              aggregated.temperature = extractValue(metricObj);
+              break;
+            
+            case 'vo2_max':
+              aggregated.vo2Max = extractValue(metricObj);
+              break;
           }
         }
         
