@@ -7,12 +7,15 @@ interface WellnessForecastCardProps {
     forecast: string;
     insights?: any;
     recommendations?: any;
-    generatedAt: string;
+    generatedAt: string | Date;
   };
   isLoading?: boolean;
 }
 
 export function WellnessForecastCard({ forecast, isLoading }: WellnessForecastCardProps) {
+  const generatedAtDate = forecast?.generatedAt ? new Date(forecast.generatedAt) : null;
+  const isValidDate = generatedAtDate && !Number.isNaN(generatedAtDate.getTime());
+
   if (isLoading) {
     return (
       <Card className="shadow-sm border-2 border-primary/20">
@@ -96,9 +99,11 @@ export function WellnessForecastCard({ forecast, isLoading }: WellnessForecastCa
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground">
-          Updated {new Date(forecast.generatedAt).toLocaleString()}
-        </p>
+        {isValidDate && (
+          <p className="text-xs text-muted-foreground">
+            Updated {generatedAtDate!.toLocaleString()}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

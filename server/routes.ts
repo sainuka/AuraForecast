@@ -51,30 +51,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authenticatedUser = await authenticateUser(req, res);
       if (!authenticatedUser) return;
-
-      const result = syncUserSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ 
-          error: "Invalid user data", 
-          details: result.error.issues 
-        });
-      }
-
-      const { id, email, name } = result.data;
       
-      if (id !== authenticatedUser.id) {
-        return res.status(403).json({ error: "Forbidden: User ID mismatch" });
-      }
-      
-      const existingUser = await storage.getUserById(id);
+      const existingUser = await storage.getUserById(authenticatedUser.id);
       if (existingUser) {
         return res.json({ user: existingUser });
       }
 
       const user = await storage.createUser({
-        id,
-        email,
-        name: name || null,
+        email: authenticatedUser.email || "demo@wellness-tracker.com",
+        name: authenticatedUser.user_metadata?.name || "Demo User",
       });
 
       res.json({ user });

@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { HealthMetric, WellnessForecast, CycleTracking } from "@shared/schema";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -24,17 +25,17 @@ export default function Dashboard() {
   const { toast } = useToast();
 
 
-  const { data: forecast, isLoading: forecastLoading } = useQuery({
+  const { data: forecast, isLoading: forecastLoading } = useQuery<WellnessForecast>({
     queryKey: ["/api/forecast", user?.id],
     enabled: !!user,
   });
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery<HealthMetric[]>({
     queryKey: ["/api/metrics", user?.id],
     enabled: !!user,
   });
 
-  const { data: cycle, isLoading: cycleLoading } = useQuery({
+  const { data: cycle, isLoading: cycleLoading } = useQuery<CycleTracking>({
     queryKey: ["/api/cycles", user?.id, "latest"],
     queryFn: async () => {
       const response = await fetch(`/api/cycles/${user?.id}/latest`);
@@ -121,23 +122,24 @@ export default function Dashboard() {
   const isConnected = !!metrics && metrics.length > 0;
   
   // Get latest available value for each metric type (not just from newest date)
-  const getLatestMetricValue = (metricKey: keyof typeof metrics[0]) => {
+  const getLatestMetricValue = (metricKey: keyof HealthMetric) => {
     if (!metrics || metrics.length === 0) return null;
     for (const metric of metrics) {
-      if (metric[metricKey] !== null && metric[metricKey] !== undefined) {
-        return metric[metricKey];
+      const value = metric[metricKey];
+      if (value !== null && value !== undefined) {
+        return value;
       }
     }
     return null;
   };
   
   const latestMetric = metrics?.[0];
-  const latestSleepScore = getLatestMetricValue('sleepScore');
-  const latestHrv = getLatestMetricValue('hrv');
-  const latestRecovery = getLatestMetricValue('recoveryScore');
-  const latestGlucose = getLatestMetricValue('avgGlucose');
-  const latestTemperature = getLatestMetricValue('temperature');
-  const latestSteps = getLatestMetricValue('steps');
+  const latestSleepScore = getLatestMetricValue('sleepScore') as number | null;
+  const latestHrv = getLatestMetricValue('hrv') as number | null;
+  const latestRecovery = getLatestMetricValue('recoveryScore') as number | null;
+  const latestGlucose = getLatestMetricValue('avgGlucose') as number | null;
+  const latestTemperature = getLatestMetricValue('temperature') as number | null;
+  const latestSteps = getLatestMetricValue('steps') as number | null;
 
   return (
     <div className="min-h-screen bg-background">
