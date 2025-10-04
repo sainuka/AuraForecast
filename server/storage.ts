@@ -14,7 +14,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { users, ultrahumanTokens, healthMetrics, wellnessForecasts, cycleTracking, healthGoals } from "@shared/schema";
-import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -31,6 +31,7 @@ export interface IStorage {
   getMetricsByUserId(userId: string, limit?: number): Promise<HealthMetric[]>;
   getMetricsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<HealthMetric[]>;
   createMetric(metric: InsertHealthMetric): Promise<HealthMetric>;
+  upsertMetric(metric: InsertHealthMetric): Promise<HealthMetric>;
   
   // Wellness Forecasts
   getLatestForecast(userId: string): Promise<WellnessForecast | undefined>;
@@ -116,6 +117,48 @@ export class DbStorage implements IStorage {
   async createMetric(insertMetric: InsertHealthMetric): Promise<HealthMetric> {
     const result = await db.insert(healthMetrics).values(insertMetric).returning();
     return result[0];
+  }
+
+  async upsertMetric(insertMetric: InsertHealthMetric): Promise<HealthMetric> {
+    // Check if a metric exists for this user and date
+    const dateStr = new Date(insertMetric.date).toISOString().split('T')[0];
+    const existing = await db
+      .select()
+      .from(healthMetrics)
+      .where(
+        and(
+          eq(healthMetrics.userId, insertMetric.userId),
+          sql`DATE(${healthMetrics.date}) = ${dateStr}`
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing record - only update fields that have values
+      const updateData: any = {};
+      if (insertMetric.sleepScore !== undefined && insertMetric.sleepScore !== null) updateData.sleepScore = insertMetric.sleepScore;
+      if (insertMetric.sleepDuration !== undefined && insertMetric.sleepDuration !== null) updateData.sleepDuration = insertMetric.sleepDuration;
+      if (insertMetric.hrv !== undefined && insertMetric.hrv !== null) updateData.hrv = insertMetric.hrv;
+      if (insertMetric.restingHeartRate !== undefined && insertMetric.restingHeartRate !== null) updateData.restingHeartRate = insertMetric.restingHeartRate;
+      if (insertMetric.recoveryScore !== undefined && insertMetric.recoveryScore !== null) updateData.recoveryScore = insertMetric.recoveryScore;
+      if (insertMetric.steps !== undefined && insertMetric.steps !== null) updateData.steps = insertMetric.steps;
+      if (insertMetric.avgGlucose !== undefined && insertMetric.avgGlucose !== null) updateData.avgGlucose = insertMetric.avgGlucose;
+      if (insertMetric.glucoseVariability !== undefined && insertMetric.glucoseVariability !== null) updateData.glucoseVariability = insertMetric.glucoseVariability;
+      if (insertMetric.temperature !== undefined && insertMetric.temperature !== null) updateData.temperature = insertMetric.temperature;
+      if (insertMetric.vo2Max !== undefined && insertMetric.vo2Max !== null) updateData.vo2Max = insertMetric.vo2Max;
+      if (insertMetric.rawData !== undefined && insertMetric.rawData !== null) updateData.rawData = insertMetric.rawData;
+
+      const result = await db
+        .update(healthMetrics)
+        .set(updateData)
+        .where(eq(healthMetrics.id, existing[0].id))
+        .returning();
+      return result[0];
+    } else {
+      // Insert new record
+      const result = await db.insert(healthMetrics).values(insertMetric).returning();
+      return result[0];
+    }
   }
 
   // Wellness Forecasts

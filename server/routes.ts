@@ -243,12 +243,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const metricsResults = await Promise.all(promises);
 
-      // Fetch all existing metrics for this user to check for duplicates
-      const existingMetrics = await storage.getMetricsByUserId(userId, 30);
-      const existingDates = new Set(
-        existingMetrics.map(m => new Date(m.date).toISOString().split('T')[0])
-      );
-
       let insertedCount = 0;
 
       // Process each day's metrics
@@ -257,9 +251,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dateStr = dateStrs[i];
         
         if (!response || !response.data || !response.data.metrics) continue;
-        
-        // Check if we already have this date
-        if (existingDates.has(dateStr)) continue;
         
         // Extract metrics for this specific date
         const dateMetrics = response.data.metrics[dateStr];
@@ -351,9 +342,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Only insert if we have at least one valid metric
+        // Upsert metrics (insert new or update existing)
         if (Object.keys(aggregated).length > 0) {
-          await storage.createMetric({
+          await storage.upsertMetric({
             userId,
             date: new Date(dateStr),
             sleepScore: aggregated.sleepScore || null,
@@ -370,8 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           insertedCount++;
-          existingDates.add(dateStr);
-          console.log(`[Sync] Inserted metrics for ${dateStr}:`, aggregated);
+          console.log(`[Sync] Upserted metrics for ${dateStr}:`, aggregated);
         }
       }
 
