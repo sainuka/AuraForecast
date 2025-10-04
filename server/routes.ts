@@ -863,6 +863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/nutrition/analyze", async (req, res) => {
     try {
       const { foodText } = req.body;
+      console.log("[Nutrition] Analyzing food text:", foodText);
       
       if (!foodText) {
         return res.status(400).json({ error: "Food text is required" });
@@ -870,6 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const apiKey = process.env.API_NINJAS_KEY;
       if (!apiKey) {
+        console.error("[Nutrition] API key not configured");
         return res.status(500).json({ error: "API Ninjas key not configured" });
       }
 
@@ -882,15 +884,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
 
+      console.log("[Nutrition] API response status:", response.status);
+
       if (!response.ok) {
-        throw new Error(`API Ninjas returned ${response.status}`);
+        const errorText = await response.text();
+        console.error("[Nutrition] API error:", response.status, errorText);
+        throw new Error(`API Ninjas returned ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log("[Nutrition] API response data:", JSON.stringify(data, null, 2));
       
-      // Calculate totals
-      const totalProtein = data.reduce((sum: number, item: any) => sum + (item.protein_g || 0), 0);
-      const totalCalories = data.reduce((sum: number, item: any) => sum + (item.calories || 0), 0);
+      // Check if premium subscription is required
+      if (data.length > 0 && typeof data[0].protein_g === 'string' && data[0].protein_g.includes('premium')) {
+        throw new Error("API Ninjas premium subscription required for full nutrition data. Please upgrade your account at https://api-ninjas.com/pricing");
+      }
+      
+      // Calculate totals - ensure values are numbers
+      const totalProtein = data.reduce((sum: number, item: any) => {
+        const protein = typeof item.protein_g === 'number' ? item.protein_g : 0;
+        return sum + protein;
+      }, 0);
+      
+      const totalCalories = data.reduce((sum: number, item: any) => {
+        const calories = typeof item.calories === 'number' ? item.calories : 0;
+        return sum + calories;
+      }, 0);
+
+      console.log("[Nutrition] Calculated totals - Protein:", totalProtein, "Calories:", totalCalories);
 
       res.json({
         foodText,

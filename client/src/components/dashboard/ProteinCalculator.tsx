@@ -42,10 +42,16 @@ export function ProteinCalculator() {
       const response = await apiRequest("POST", "/api/nutrition/analyze", { foodText });
       const data = await response.json();
 
-      setResult(data);
+      const result = {
+        ...data,
+        totalProtein: Number(data.totalProtein) || 0,
+        totalCalories: Number(data.totalCalories) || 0,
+      };
+
+      setResult(result);
       toast({
         title: "Analysis Complete",
-        description: `Total protein: ${data.totalProtein.toFixed(1)}g`,
+        description: `Total protein: ${result.totalProtein.toFixed(1)}g`,
       });
     } catch (error: any) {
       toast({
@@ -124,8 +130,8 @@ export function ProteinCalculator() {
                     >
                       <span className="font-medium capitalize">{item.name}</span>
                       <div className="flex gap-4 text-muted-foreground">
-                        <span>{item.protein_g.toFixed(1)}g protein</span>
-                        <span>{item.calories.toFixed(0)} cal</span>
+                        <span>{(Number(item.protein_g) || 0).toFixed(1)}g protein</span>
+                        <span>{(Number(item.calories) || 0).toFixed(0)} cal</span>
                       </div>
                     </div>
                   ))}
