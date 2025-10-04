@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, insertCycleTrackingSchema } from "@shared/schema";
 import { exchangeCodeForTokens, refreshAccessToken, fetchHealthMetrics } from "./lib/ultrahuman";
 import { generateWellnessForecast } from "./lib/openai";
 
@@ -267,6 +267,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Generate forecast error:", error);
       res.status(400).json({ error: error.message || "Failed to generate forecast" });
+    }
+  });
+
+  // Cycle tracking routes
+  app.get("/api/cycles/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const cycles = await storage.getCyclesByUserId(userId);
+      res.json(cycles);
+    } catch (error: any) {
+      console.error("Get cycles error:", error);
+      res.status(400).json({ error: error.message || "Failed to get cycles" });
+    }
+  });
+
+  app.get("/api/cycles/:userId/latest", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const cycle = await storage.getLatestCycle(userId);
+      res.json(cycle || null);
+    } catch (error: any) {
+      console.error("Get latest cycle error:", error);
+      res.status(400).json({ error: error.message || "Failed to get latest cycle" });
+    }
+  });
+
+  app.post("/api/cycles", async (req, res) => {
+    try {
+      const result = insertCycleTrackingSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid cycle data", 
+          details: result.error.issues 
+        });
+      }
+
+      const cycle = await storage.createCycle(result.data);
+      res.json(cycle);
+    } catch (error: any) {
+      console.error("Create cycle error:", error);
+      res.status(400).json({ error: error.message || "Failed to create cycle" });
+    }
+  });
+
+  app.patch("/api/cycles/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const cycle = await storage.updateCycle(id, req.body);
+      if (!cycle) {
+        return res.status(404).json({ error: "Cycle not found" });
+      }
+
+      res.json(cycle);
+    } catch (error: any) {
+      console.error("Update cycle error:", error);
+      res.status(400).json({ error: error.message || "Failed to update cycle" });
     }
   });
 

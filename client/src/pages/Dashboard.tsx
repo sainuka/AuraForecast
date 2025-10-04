@@ -7,7 +7,10 @@ import { WellnessForecastCard } from "@/components/dashboard/WellnessForecastCar
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { HealthMetricsChart } from "@/components/dashboard/HealthMetricsChart";
 import { UltrahumanConnection } from "@/components/dashboard/UltrahumanConnection";
+import { CycleTrackingCard } from "@/components/dashboard/CycleTrackingCard";
+import { CycleTrackingDialog } from "@/components/cycle/CycleTrackingDialog";
 import { Heart, Moon, Activity, Droplet, Thermometer, LogOut } from "lucide-react";
+import { calculateCyclePhase } from "@/lib/cycleUtils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -35,6 +38,16 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  const { data: cycle, isLoading: cycleLoading } = useQuery({
+    queryKey: ["/api/cycles", user?.id, "latest"],
+    queryFn: async () => {
+      const response = await fetch(`/api/cycles/${user?.id}/latest`);
+      if (!response.ok) throw new Error("Failed to fetch cycle");
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
   const handleConnect = () => {
     const clientId = import.meta.env.VITE_ULTRAHUMAN_CLIENT_ID || process.env.ULTRAHUMAN_CLIENT_ID;
     const redirectUri = `${window.location.origin}/auth/ultrahuman/callback`;
@@ -56,7 +69,17 @@ export default function Dashboard() {
       
       await queryClient.invalidateQueries({ queryKey: ["/api/metrics", user.id] });
       
-      await apiRequest("POST", "/api/forecast/generate", { userId: user.id });
+      let cyclePhase;
+      if (cycle?.periodStartDate) {
+        const periodStartDate = new Date(cycle.periodStartDate);
+        const cycleLength = cycle.cycleLength || 28;
+        cyclePhase = calculateCyclePhase(periodStartDate, cycleLength);
+      }
+      
+      await apiRequest("POST", "/api/forecast/generate", { 
+        userId: user.id,
+        cyclePhase 
+      });
       await queryClient.invalidateQueries({ queryKey: ["/api/forecast", user.id] });
       
       toast({
@@ -185,6 +208,12 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-6">
+              <div className="flex gap-2">
+                {user && <CycleTrackingDialog userId={user.id} />}
+              </div>
+              
+              <CycleTrackingCard cycle={cycle} isLoading={cycleLoading} />
+              
               <UltrahumanConnection
                 isConnected={isConnected}
                 lastSync={isConnected ? new Date().toISOString() : undefined}

@@ -7,10 +7,12 @@ import {
   type InsertHealthMetric,
   type WellnessForecast,
   type InsertWellnessForecast,
+  type CycleTracking,
+  type InsertCycleTracking,
 } from "@shared/schema";
 import { db } from "./db";
-import { users, ultrahumanTokens, healthMetrics, wellnessForecasts } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { users, ultrahumanTokens, healthMetrics, wellnessForecasts, cycleTracking } from "@shared/schema";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -30,6 +32,12 @@ export interface IStorage {
   // Wellness Forecasts
   getLatestForecast(userId: string): Promise<WellnessForecast | undefined>;
   createForecast(forecast: InsertWellnessForecast): Promise<WellnessForecast>;
+  
+  // Cycle Tracking
+  getCyclesByUserId(userId: string, limit?: number): Promise<CycleTracking[]>;
+  getLatestCycle(userId: string): Promise<CycleTracking | undefined>;
+  createCycle(cycle: InsertCycleTracking): Promise<CycleTracking>;
+  updateCycle(id: string, cycle: Partial<InsertCycleTracking>): Promise<CycleTracking | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -97,6 +105,40 @@ export class DbStorage implements IStorage {
 
   async createForecast(insertForecast: InsertWellnessForecast): Promise<WellnessForecast> {
     const result = await db.insert(wellnessForecasts).values(insertForecast).returning();
+    return result[0];
+  }
+
+  // Cycle Tracking
+  async getCyclesByUserId(userId: string, limit: number = 12): Promise<CycleTracking[]> {
+    return await db
+      .select()
+      .from(cycleTracking)
+      .where(eq(cycleTracking.userId, userId))
+      .orderBy(desc(cycleTracking.periodStartDate))
+      .limit(limit);
+  }
+
+  async getLatestCycle(userId: string): Promise<CycleTracking | undefined> {
+    const result = await db
+      .select()
+      .from(cycleTracking)
+      .where(eq(cycleTracking.userId, userId))
+      .orderBy(desc(cycleTracking.periodStartDate))
+      .limit(1);
+    return result[0];
+  }
+
+  async createCycle(insertCycle: InsertCycleTracking): Promise<CycleTracking> {
+    const result = await db.insert(cycleTracking).values(insertCycle).returning();
+    return result[0];
+  }
+
+  async updateCycle(id: string, updateData: Partial<InsertCycleTracking>): Promise<CycleTracking | undefined> {
+    const result = await db
+      .update(cycleTracking)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(cycleTracking.id, id))
+      .returning();
     return result[0];
   }
 }
