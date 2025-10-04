@@ -123,8 +123,26 @@ export default function Dashboard() {
 
   if (!user) return null;
 
-  const latestMetric = metrics?.[0];
   const isConnected = !!metrics && metrics.length > 0;
+  
+  // Get latest available value for each metric type (not just from newest date)
+  const getLatestMetricValue = (metricKey: keyof typeof metrics[0]) => {
+    if (!metrics || metrics.length === 0) return null;
+    for (const metric of metrics) {
+      if (metric[metricKey] !== null && metric[metricKey] !== undefined) {
+        return metric[metricKey];
+      }
+    }
+    return null;
+  };
+  
+  const latestMetric = metrics?.[0];
+  const latestSleepScore = getLatestMetricValue('sleepScore');
+  const latestHrv = getLatestMetricValue('hrv');
+  const latestRecovery = getLatestMetricValue('recoveryScore');
+  const latestGlucose = getLatestMetricValue('avgGlucose');
+  const latestTemperature = getLatestMetricValue('temperature');
+  const latestSteps = getLatestMetricValue('steps');
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,41 +219,41 @@ export default function Dashboard() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <MetricCard
                   title="Sleep Score"
-                  value={latestMetric?.sleepScore || "N/A"}
+                  value={latestSleepScore || "N/A"}
                   icon={Moon}
                   isLoading={metricsLoading}
                   data-testid="card-sleep-score"
                 />
                 <MetricCard
                   title="HRV"
-                  value={latestMetric?.hrv || "N/A"}
+                  value={latestHrv || "N/A"}
                   unit="ms"
                   icon={Heart}
                   isLoading={metricsLoading}
                 />
                 <MetricCard
                   title="Recovery"
-                  value={latestMetric?.recoveryScore || "N/A"}
+                  value={latestRecovery || "N/A"}
                   icon={Activity}
                   isLoading={metricsLoading}
                 />
                 <MetricCard
                   title="Avg Glucose"
-                  value={latestMetric?.avgGlucose ? Number(latestMetric.avgGlucose).toFixed(0) : "N/A"}
+                  value={latestGlucose ? Number(latestGlucose).toFixed(0) : "N/A"}
                   unit="mg/dL"
                   icon={Droplet}
                   isLoading={metricsLoading}
                 />
                 <MetricCard
                   title="Temperature"
-                  value={latestMetric?.temperature ? Number(latestMetric.temperature).toFixed(1) : "N/A"}
+                  value={latestTemperature ? ((Number(latestTemperature) * 9/5) + 32).toFixed(1) : "N/A"}
                   unit="°F"
                   icon={Thermometer}
                   isLoading={metricsLoading}
                 />
                 <MetricCard
                   title="Steps"
-                  value={latestMetric?.steps ? (latestMetric.steps > 1000 ? `${(latestMetric.steps / 1000).toFixed(1)}k` : latestMetric.steps) : "N/A"}
+                  value={latestSteps ? (latestSteps > 1000 ? `${(latestSteps / 1000).toFixed(1)}k` : latestSteps) : "N/A"}
                   icon={Activity}
                   isLoading={metricsLoading}
                 />
