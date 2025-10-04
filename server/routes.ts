@@ -299,14 +299,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           switch (type) {
             case 'sleep':
               // Sleep is a complex nested object
+              console.log('Processing sleep metric:', JSON.stringify(metricObj, null, 2));
               if (metricObj.sleep_score?.score !== undefined) {
                 aggregated.sleepScore = metricObj.sleep_score.score;
+                console.log('Extracted sleep score:', aggregated.sleepScore);
               }
               if (metricObj.total_sleep?.minutes !== undefined) {
                 aggregated.sleepDuration = metricObj.total_sleep.minutes;
+                console.log('Extracted sleep duration:', aggregated.sleepDuration);
               }
               if (metricObj.average_body_temperature?.celsius !== undefined) {
                 aggregated.temperature = metricObj.average_body_temperature.celsius;
+                console.log('Extracted temperature:', aggregated.temperature);
               }
               break;
             
