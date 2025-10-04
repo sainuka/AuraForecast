@@ -3,13 +3,23 @@ import OpenAI from "openai";
 // Using the OpenAI blueprint integration
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY environment variable is required");
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY environment variable is not configured");
+  }
+  
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ 
+      apiKey: process.env.OPENAI_API_KEY 
+    });
+  }
+  
+  return openaiClient;
 }
 
-export const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
-});
+export const openai = getOpenAIClient;
 
 interface HealthData {
   sleepScore?: number;
@@ -59,7 +69,8 @@ Respond in JSON format with this structure:
 }`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: "gpt-5",
       messages: [
         {

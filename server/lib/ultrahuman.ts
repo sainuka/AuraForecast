@@ -2,8 +2,10 @@ import axios from "axios";
 
 const ULTRAHUMAN_BASE_URL = "https://partner.ultrahuman.com";
 
-if (!process.env.ULTRAHUMAN_CLIENT_ID || !process.env.ULTRAHUMAN_CLIENT_SECRET) {
-  throw new Error("ULTRAHUMAN_CLIENT_ID and ULTRAHUMAN_CLIENT_SECRET are required");
+function validateUltrahumanCredentials() {
+  if (!process.env.ULTRAHUMAN_CLIENT_ID || !process.env.ULTRAHUMAN_CLIENT_SECRET) {
+    throw new Error("ULTRAHUMAN_CLIENT_ID and ULTRAHUMAN_CLIENT_SECRET are not configured");
+  }
 }
 
 export interface TokenResponse {
@@ -19,6 +21,8 @@ export async function exchangeCodeForTokens(
   code: string,
   redirectUri: string
 ): Promise<TokenResponse> {
+  validateUltrahumanCredentials();
+  
   try {
     const response = await axios.post(
       `${ULTRAHUMAN_BASE_URL}/oauth/token`,
@@ -44,6 +48,8 @@ export async function exchangeCodeForTokens(
 }
 
 export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+  validateUltrahumanCredentials();
+  
   try {
     const response = await axios.post(
       `${ULTRAHUMAN_BASE_URL}/oauth/token`,
